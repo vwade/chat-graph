@@ -1,6 +1,39 @@
 export type ChatRole = 'system' | 'user' | 'assistant' | 'context';
 
-export type EdgeKind = 'reply' | 'context' | 'branch' | 'reference' | 'supports' | 'contradicts';
+export type GraphNodeKind =
+	| 'user_message'
+	| 'assistant_message'
+	| 'system_instruction'
+	| 'summary'
+	| 'memory'
+	| 'artifact'
+	| 'tool_call'
+	| 'tool_result'
+	| 'decision'
+	| 'question'
+	| 'claim'
+	| 'reference'
+	| 'branch_root'
+	| 'context_bundle';
+
+export type EdgeKind =
+	| 'reply_to'
+	| 'references'
+	| 'supports'
+	| 'contradicts'
+	| 'revises'
+	| 'branches_from'
+	| 'summarizes'
+	| 'contains'
+	| 'uses_context'
+	| 'generated'
+	| 'tool_input'
+	| 'tool_output'
+	// v0.1 import compatibility aliases.
+	| 'reply'
+	| 'context'
+	| 'branch'
+	| 'reference';
 
 export type AgentMode = 'mock' | 'http';
 
@@ -14,6 +47,7 @@ export type ChatNodeStatus = 'idle' | 'streaming' | 'error';
 export type ChatNode = {
 	id: string;
 	role: ChatRole;
+	kind: GraphNodeKind;
 	title: string;
 	text: string;
 	x: number;
@@ -54,6 +88,14 @@ export type GraphState = {
 export type AgentMessage = {
 	role: 'system' | 'user' | 'assistant';
 	content: string;
+};
+
+export type ContextTraversalOptions = {
+	include_ancestors: boolean;
+	include_direct_replies: boolean;
+	include_references: boolean;
+	include_contradictions: boolean;
+	include_tool_outputs: boolean;
 };
 
 export type ContextBundle = {
