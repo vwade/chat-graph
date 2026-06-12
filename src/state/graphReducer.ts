@@ -1,4 +1,4 @@
-import type { AgentMode, ChatEdge, ChatNode, EdgeKind, GraphState } from '../types';
+import type { AgentMode, ChatEdge, ChatNode, ChatRole, EdgeKind, GraphNodeKind, GraphState } from '../types';
 import { createSampleGraph } from '../data/sampleGraph';
 import { estimateTokens, makeId } from '../utils/id';
 
@@ -114,8 +114,8 @@ export function graphReducer(state: GraphState, action: GraphAction): GraphState
 				id: makeId('edge'),
 				from: state.linking_from_id,
 				to: action.to,
-				kind: action.kind ?? 'reference',
-				label: action.kind ?? 'reference',
+				kind: action.kind ?? 'references',
+				label: action.kind ?? 'references',
 				weight: 1,
 				created_at: Date.now()
 			};
@@ -147,6 +147,7 @@ function normalizeNode(node: ChatNode): ChatNode {
 		text: node.text ?? '',
 		tags: Array.isArray(node.tags) ? node.tags : [],
 		status: node.status ?? 'idle',
+		kind: node.kind ?? kindFromRole(node.role),
 		created_at: node.created_at ?? Date.now(),
 		updated_at: node.updated_at ?? Date.now(),
 		token_estimate: estimateTokens(node.text ?? '')
@@ -156,7 +157,18 @@ function normalizeNode(node: ChatNode): ChatNode {
 function fallbackTitle(node: ChatNode): string {
 	const start = node.text.trim().split('\n').find(Boolean);
 	if (start) return start.length > 60 ? `${start.slice(0, 57)}…` : start;
-	return `${node.role} node`;
+	return `${node.kind ?? kindFromRole(node.role)} node`;
+}
+
+function kindFromRole(role: ChatRole): GraphNodeKind {
+	switch (role) {
+		case 'assistant': return 'assistant_message';
+		case 'system': return 'system_instruction';
+		case 'context': return 'memory';
+		case 'user':
+		default:
+			return 'user_message';
+	}
 }
 
 function normalizeGraph(state: GraphState): GraphState {

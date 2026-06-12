@@ -30,6 +30,7 @@ export function Composer() {
 		const user_node = makeNode({
 			id: user_id,
 			role: 'user',
+			kind: 'user_message',
 			title: firstLine(user_text, 'User turn'),
 			text: user_text,
 			x: origin.x + 360,
@@ -39,6 +40,7 @@ export function Composer() {
 		const assistant_node = makeNode({
 			id: assistant_id,
 			role: 'assistant',
+			kind: 'assistant_message',
 			title: 'Agent reply',
 			text: 'Gathering selected graph context…',
 			x: origin.x + 720,
@@ -52,11 +54,11 @@ export function Composer() {
 		for (const anchor_id of anchor_ids) {
 			dispatch({
 				type: 'add_edge',
-				edge: makeEdge(anchor_id, user_id, anchor_ids.length > 1 ? 'branch' : 'context')
+				edge: makeEdge(anchor_id, user_id, anchor_ids.length > 1 ? 'branches_from' : 'uses_context')
 			});
 		}
 		dispatch({ type: 'add_node', node: assistant_node, select: true });
-		dispatch({ type: 'add_edge', edge: makeEdge(user_id, assistant_id, 'reply') });
+		dispatch({ type: 'add_edge', edge: makeEdge(user_id, assistant_id, 'reply_to') });
 
 		const bundle = buildContextBundle(state, anchor_ids, state.context_radius);
 		const messages = [

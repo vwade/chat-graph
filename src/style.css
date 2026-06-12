@@ -237,6 +237,10 @@ select:focus {
 	grid-template-rows: auto 1fr;
 }
 
+.chat-panel {
+	grid-template-rows: auto auto 1fr;
+}
+
 .panel-heading {
 	display: flex;
 	align-items: center;
@@ -445,4 +449,35 @@ label span {
 		border-top: 1px solid var(--line);
 		overflow: auto;
 	}
+}
+
+.compiler-controls {
+	display: flex;
+	align-items: center;
+	gap: 0.45rem;
+	flex-wrap: wrap;
+	padding: 0.68rem 0.75rem;
+	border-bottom: 1px solid var(--line);
+}
+
+.compiler-controls label {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.32rem;
+	border: 1px solid var(--line);
+	border-radius: 999px;
+	background: rgba(7, 12, 24, 0.42);
+	padding: 0.26rem 0.52rem;
+}
+
+.compiler-controls input[type="checkbox"] {
+	width: auto;
+	padding: 0;
+	accent-color: var(--accent-strong);
+}
+
+.compiler-controls label span {
+	margin: 0;
+	font-size: 0.72rem;
+	color: #c8d7f5;
 }
