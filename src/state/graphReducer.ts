@@ -172,6 +172,7 @@ function normalizeNode(node: ChatNode): ChatNode {
 		content_type: node.content_type ?? 'text/plain',
 		created_at: node.created_at ?? Date.now(),
 		updated_at: node.updated_at ?? Date.now(),
+		content_type: node.content_type ?? 'text/plain',
 		token_estimate: estimateTokens(node.text ?? ''),
 		layout: normalizeLayout(node)
 	};
