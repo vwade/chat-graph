@@ -1,9 +1,11 @@
 import type { AgentMode, ChatEdge, ChatNode, ChatRole, EdgeKind, GraphNodeKind, GraphState } from '../types';
+import type { GraphPatch } from '../importers/types';
 import { createSampleGraph } from '../data/sampleGraph';
 import { estimateTokens, makeId } from '../utils/id';
 
 export type GraphAction =
 	| { type: 'hydrate'; state: GraphState }
+	| { type: 'apply_patch'; patch: GraphPatch }
 	| { type: 'reset' }
 	| { type: 'add_node'; node: ChatNode; select?: boolean }
 	| { type: 'update_node'; id: string; patch: Partial<ChatNode> }
@@ -23,6 +25,9 @@ export function graphReducer(state: GraphState, action: GraphAction): GraphState
 	switch (action.type) {
 		case 'hydrate': {
 			return normalizeGraph(action.state);
+		}
+		case 'apply_patch': {
+			return applyGraphPatch(state, action.patch);
 		}
 		case 'reset': {
 			return createSampleGraph();
@@ -185,5 +190,39 @@ function normalizeGraph(state: GraphState): GraphState {
 		agent_mode: state.agent_mode ?? 'mock',
 		http_endpoint: state.http_endpoint ?? '/api/chat',
 		last_saved_at: state.last_saved_at ?? null
+	};
+}
+
+function applyGraphPatch(state: GraphState, patch: GraphPatch): GraphState {
+	const id_map = new Map<string, string>();
+	const nodes = { ...state.nodes };
+
+	for (const [id, node] of Object.entries(patch.nodes ?? {})) {
+		const next_id = nodes[id] ? makeId('import_node') : id;
+		id_map.set(id, next_id);
+		nodes[next_id] = normalizeNode({ ...node, id: next_id });
+	}
+
+	const edges = { ...state.edges };
+	for (const [id, edge] of Object.entries(patch.edges ?? {})) {
+		const from = id_map.get(edge.from) ?? edge.from;
+		const to = id_map.get(edge.to) ?? edge.to;
+		if (!nodes[from] || !nodes[to]) continue;
+		const next_id = edges[id] ? makeId('import_edge') : id;
+		edges[next_id] = { ...edge, id: next_id, from, to };
+	}
+
+	const selected_node_ids = (patch.selected_node_ids ?? [])
+		.map((id) => id_map.get(id) ?? id)
+		.filter((id) => Boolean(nodes[id]));
+	const active_node_id = patch.active_node_id ? id_map.get(patch.active_node_id) ?? patch.active_node_id : selected_node_ids[0] ?? state.active_node_id;
+
+	return {
+		...state,
+		nodes,
+		edges,
+		selected_node_ids,
+		active_node_id: active_node_id && nodes[active_node_id] ? active_node_id : null,
+		linking_from_id: null
 	};
 }
