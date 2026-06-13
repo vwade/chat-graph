@@ -40,6 +40,7 @@ export function calculateForceLayout(
 		const layout = node.layout;
 		simulation_nodes.set(node.id, {
 			id: node.id,
+			node_id: node.id,
 			x: layout?.x ?? node.x,
 			y: layout?.y ?? node.y,
 			z: config.dimensions === 3 ? layout?.z ?? 0 : undefined,
@@ -62,6 +63,7 @@ export function calculateForceLayout(
 		Array.from(simulation_nodes.values()).map((node) => [
 			node.id,
 			{
+				node_id: node.node_id,
 				x: node.x,
 				y: node.y,
 				...(config.dimensions === 3 ? { z: node.z ?? 0 } : {}),

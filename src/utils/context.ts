@@ -120,9 +120,16 @@ export function buildContextBundle(
 			content: `${node.title}\n\n${node.text.trim()}`
 		}));
 
+	const anchor_set = new Set(anchors);
+	const items = nodes.map((node) => ({
+		node,
+		reasons: anchor_set.has(node.id) ? ['selected'] : [`within ${visited.get(node.id) ?? 0} hop${(visited.get(node.id) ?? 0) === 1 ? '' : 's'}`]
+	}));
+
 	return {
 		anchor_ids: anchors,
 		nodes,
+		items,
 		edges,
 		messages,
 		digest

@@ -48,9 +48,9 @@ export function messageArrayPatch(value: MessageLike[], filename: string): Graph
 
 export function previewToPatch(preview: ImportPreview): GraphPatch {
 	return {
-		nodes: Object.fromEntries(preview.thread.nodes.map((node) => [node.id, node])),
-		edges: Object.fromEntries(preview.thread.edges.map((edge) => [edge.id, edge])),
-		selected_node_ids: preview.thread.nodes.length ? [preview.thread.nodes[preview.thread.nodes.length - 1].id] : [],
+		add_nodes: preview.thread.nodes,
+		add_edges: preview.thread.edges,
+		select_node_ids: preview.thread.nodes.length ? [preview.thread.nodes[preview.thread.nodes.length - 1].id] : [],
 		active_node_id: preview.thread.nodes.at(-1)?.id ?? null
 	};
 }

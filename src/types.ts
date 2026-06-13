@@ -189,9 +189,15 @@ export type ContextTraversalOptions = {
 	include_tool_outputs: boolean;
 };
 
+export type ContextBundleItem = {
+	node: ChatNode;
+	reasons: string[];
+};
+
 export type ContextBundle = {
 	anchor_ids: string[];
 	nodes: ChatNode[];
+	items: ContextBundleItem[];
 	edges: ChatEdge[];
 	messages: AgentMessage[];
 	digest: string;

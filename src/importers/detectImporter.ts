@@ -59,9 +59,19 @@ function graphStatePreview(graph: GraphState, filename: string): ImportPreview {
 
 function graphStatePatch(graph: GraphState): GraphPatch {
 	return {
-		nodes: graph.nodes ?? {},
-		edges: graph.edges ?? {},
-		selected_node_ids: graph.selected_node_ids ?? [],
+		add_nodes: Object.values(graph.nodes ?? {}),
+		add_edges: Object.values(graph.edges ?? {}),
+		add_threads: Object.values(graph.threads ?? {}),
+		add_import_manifests: Object.values(graph.import_manifests ?? {}),
+		select_node_ids: graph.selected_node_ids ?? [],
 		active_node_id: graph.active_node_id ?? null
 	};
+}
+
+export function isRecord(value: unknown): value is Record<string, unknown> {
+	return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
+
+export function isChatGraphBackup(value: unknown): value is GraphState {
+	return isGraphState(value);
 }
