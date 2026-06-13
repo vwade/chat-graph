@@ -481,3 +481,26 @@ label span {
 	font-size: 0.72rem;
 	color: #c8d7f5;
 }
+
+.context-reasons {
+	display: flex;
+	align-items: center;
+	gap: 0.35rem;
+	flex-wrap: wrap;
+	margin-top: 0.65rem;
+}
+
+.reason-label {
+	color: var(--muted);
+	font-size: 0.7rem;
+}
+
+.reason-chip {
+	border: 1px solid rgba(125, 211, 252, 0.22);
+	border-radius: 999px;
+	background: rgba(125, 211, 252, 0.1);
+	color: #d7efff;
+	font-size: 0.68rem;
+	padding: 0.2rem 0.45rem;
+	text-transform: capitalize;
+}
