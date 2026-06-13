@@ -1,4 +1,5 @@
 import type { GraphState } from '../types';
+import { canImportChatGptMapping, buildChatGptPreview } from './chatGptImporter';
 import { previewGenericJson } from './genericJsonImporter';
 import { isMessageArray, previewMessageArray, previewToPatch } from './messageArrayImporter';
 import type { GraphPatch, ImportManifest, ImportPreview } from './types';
@@ -10,13 +11,25 @@ export type DetectedImporter = ImportManifest & {
 
 export function detectImporter(value: unknown, filename: string): DetectedImporter {
 	if (isGraphState(value)) {
+		const preview = graphStatePreview(value, filename);
 		return {
 			kind: 'chat_graph_backup',
 			label: 'Chat Graph backup',
 			description: 'Detected a full Chat Graph backup. Use Restore to replace the graph, or import to merge its nodes and edges.',
 			can_restore: true,
-			preview: graphStatePreview(value, filename),
+			preview,
 			createPatch: () => graphStatePatch(value)
+		};
+	}
+	if (canImportChatGptMapping(value)) {
+		const preview = buildChatGptPreview(value, filename, emptyGraphState());
+		return {
+			kind: 'chatgpt_mapping',
+			label: 'ChatGPT conversation',
+			description: 'Detected a ChatGPT conversation mapping export.',
+			can_restore: false,
+			preview,
+			createPatch: () => preview.patch ?? previewToPatch(preview)
 		};
 	}
 	if (isMessageArray(value)) {
@@ -51,6 +64,8 @@ function graphStatePreview(graph: GraphState, filename: string): ImportPreview {
 	const nodes = Object.values(graph.nodes ?? {});
 	const edges = Object.values(graph.edges ?? {});
 	return {
+		kind: 'chat_graph_backup',
+		file_name: filename,
 		title: `Import ${graph.title || filename}`,
 		description: `Detected Chat Graph backup with ${nodes.length} nodes and ${edges.length} edges.`,
 		thread: { title: graph.title || filename, nodes, edges }
@@ -68,10 +83,21 @@ function graphStatePatch(graph: GraphState): GraphPatch {
 	};
 }
 
-export function isRecord(value: unknown): value is Record<string, unknown> {
-	return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
-}
-
-export function isChatGraphBackup(value: unknown): value is GraphState {
-	return isGraphState(value);
+function emptyGraphState(): GraphState {
+	return {
+		schema_version: 1,
+		graph_id: 'import-preview',
+		title: 'Import preview',
+		nodes: {},
+		edges: {},
+		threads: {},
+		import_manifests: {},
+		selected_node_ids: [],
+		active_node_id: null,
+		linking_from_id: null,
+		context_radius: 2,
+		agent_mode: 'mock',
+		http_endpoint: '',
+		last_saved_at: null
+	};
 }

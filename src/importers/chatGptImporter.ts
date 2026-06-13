@@ -1,6 +1,5 @@
 import type { ChatNode, ChatRole, GraphPatch, GraphState } from '../types';
 import { estimateTokens, makeId } from '../utils/id';
-import { isRecord } from './detectImporter';
 import { makeImportedEdge, makeImportedNode, makeManifest, makeThread, safeText, stableHash } from './importUtils';
 import type { ImportPreview } from './types';
 
@@ -165,6 +164,21 @@ export function buildChatGptPreview(data: unknown, file_name: string, current: G
 		patch,
 		warnings: parsed.length === 0 ? ['No ChatGPT messages with content were found in the mapping.'] : []
 	};
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
+
+function isChatGptMapping(value: unknown): value is Record<string, unknown> {
+	if (!isRecord(value)) return false;
+	const mapping = value.mapping;
+	if (!isRecord(mapping)) return false;
+	return Object.values(mapping).some((entry) => isRecord(entry) && isRecord(entry.message));
+}
+
+export function canImportChatGptMapping(value: unknown): boolean {
+	return isChatGptMapping(value);
 }
 
 function parseMapping(mapping: Record<string, unknown>): ParsedMessage[] {
