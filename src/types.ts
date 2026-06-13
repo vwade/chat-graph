@@ -44,6 +44,25 @@ export type Vec2 = {
 
 export type ChatNodeStatus = 'idle' | 'streaming' | 'error';
 
+export type ContentType = 'text/plain' | 'text/markdown' | 'application/json';
+
+export type NodeSource = {
+	provider: string;
+	conversation_id?: string;
+	message_id?: string;
+	parent_message_id?: string;
+	raw_path?: string;
+	raw_hash: string;
+};
+
+export type NodeTrust =
+	| 'user-authored'
+	| 'assistant-generated'
+	| 'tool-observed'
+	| 'imported-unknown'
+	| 'summarized'
+	| 'derived';
+
 export type ChatNode = {
 	id: string;
 	role: ChatRole;
@@ -58,6 +77,36 @@ export type ChatNode = {
 	model?: string;
 	status: ChatNodeStatus;
 	token_estimate: number;
+	content_type?: ContentType;
+	content_json?: unknown;
+	imported_at?: number;
+	source?: NodeSource;
+	thread_id?: string;
+	branch_id?: string;
+	branch_path?: string[];
+	sibling_index?: number;
+	trust?: NodeTrust;
+};
+
+export type ImportedThread = {
+	id: string;
+	title?: string;
+	source: NodeSource;
+	node_ids: string[];
+	edge_ids: string[];
+	root_node_id?: string;
+	created_at?: number;
+	updated_at?: number;
+	imported_at: number;
+};
+
+export type ImportManifest = {
+	schema_version: 1;
+	imported_at: number;
+	source_provider: string;
+	source_path?: string;
+	source_hash: string;
+	threads: ImportedThread[];
 };
 
 export type ChatEdge = {

@@ -150,6 +150,7 @@ function normalizeNode(node: ChatNode): ChatNode {
 		kind: node.kind ?? kindFromRole(node.role),
 		created_at: node.created_at ?? Date.now(),
 		updated_at: node.updated_at ?? Date.now(),
+		content_type: node.content_type ?? 'text/plain',
 		token_estimate: estimateTokens(node.text ?? '')
 	};
 }
