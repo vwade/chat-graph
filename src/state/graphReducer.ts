@@ -60,7 +60,19 @@ export function graphReducer(state: GraphState, action: GraphAction): GraphState
 				...state,
 				nodes: {
 					...state.nodes,
-					[action.id]: { ...old_node, x: action.x, y: action.y, updated_at: Date.now() }
+					[action.id]: {
+						...old_node,
+						x: action.x,
+						y: action.y,
+						layout: {
+							x: action.x,
+							y: action.y,
+							z: old_node.layout?.z,
+							pinned: true,
+							group_id: old_node.layout?.group_id ?? ''
+						},
+						updated_at: Date.now()
+					}
 				}
 			};
 		}
@@ -155,7 +167,19 @@ function normalizeNode(node: ChatNode): ChatNode {
 		content_type: node.content_type ?? 'text/plain',
 		created_at: node.created_at ?? Date.now(),
 		updated_at: node.updated_at ?? Date.now(),
-		token_estimate: estimateTokens(node.text ?? '')
+		token_estimate: estimateTokens(node.text ?? ''),
+		layout: normalizeLayout(node)
+	};
+}
+
+function normalizeLayout(node: ChatNode): ChatNode['layout'] {
+	if (!node.layout && node.x === undefined && node.y === undefined) return undefined;
+	return {
+		x: node.layout?.x ?? node.x ?? 0,
+		y: node.layout?.y ?? node.y ?? 0,
+		z: node.layout?.z,
+		pinned: node.layout?.pinned ?? false,
+		group_id: node.layout?.group_id ?? ''
 	};
 }
 
