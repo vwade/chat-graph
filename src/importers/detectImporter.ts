@@ -1,33 +1,67 @@
 import type { GraphState } from '../types';
-import type { ImportKind } from './types';
+import { previewGenericJson } from './genericJsonImporter';
+import { isMessageArray, previewMessageArray, previewToPatch } from './messageArrayImporter';
+import type { GraphPatch, ImportManifest, ImportPreview } from './types';
 
-type UnknownRecord = Record<string, unknown>;
+export type DetectedImporter = ImportManifest & {
+	preview: ImportPreview;
+	createPatch: () => GraphPatch;
+};
 
-export function detectImporter(data: unknown): ImportKind {
-	if (isChatGraphBackup(data)) return 'chat_graph_backup';
-	if (isChatGptMapping(data)) return 'chatgpt_mapping';
-	if (isMessageArray(data)) return 'message_array';
-	return 'generic_json';
+export function detectImporter(value: unknown, filename: string): DetectedImporter {
+	if (isGraphState(value)) {
+		return {
+			kind: 'chat_graph_backup',
+			label: 'Chat Graph backup',
+			description: 'Detected a full Chat Graph backup. Use Restore to replace the graph, or import to merge its nodes and edges.',
+			can_restore: true,
+			preview: graphStatePreview(value, filename),
+			createPatch: () => graphStatePatch(value)
+		};
+	}
+	if (isMessageArray(value)) {
+		const preview = previewMessageArray(value, filename);
+		return {
+			kind: 'message_array',
+			label: 'Message array',
+			description: 'Detected an array of role/content chat messages.',
+			can_restore: false,
+			preview,
+			createPatch: () => previewToPatch(preview)
+		};
+	}
+	const preview = previewGenericJson(value, filename);
+	return {
+		kind: 'generic_json',
+		label: 'Generic JSON',
+		description: 'Detected arbitrary JSON and converted it to artifact nodes.',
+		can_restore: false,
+		preview,
+		createPatch: () => previewToPatch(preview)
+	};
 }
 
-export function isChatGraphBackup(data: unknown): data is GraphState {
-	if (!isRecord(data)) return false;
-	return data.schema_version === 1 && isRecord(data.nodes) && isRecord(data.edges);
+function isGraphState(value: unknown): value is GraphState {
+	if (!value || typeof value !== 'object') return false;
+	const graph = value as Partial<GraphState>;
+	return graph.schema_version === 1 && typeof graph.graph_id === 'string' && typeof graph.title === 'string' && Boolean(graph.nodes) && Boolean(graph.edges);
 }
 
-export function isChatGptMapping(data: unknown): boolean {
-	if (!isRecord(data)) return false;
-	const mapping = data.mapping;
-	if (!isRecord(mapping)) return false;
-	return Object.values(mapping).some((entry) => isRecord(entry) && ('message' in entry || 'parent' in entry || 'children' in entry));
+function graphStatePreview(graph: GraphState, filename: string): ImportPreview {
+	const nodes = Object.values(graph.nodes ?? {});
+	const edges = Object.values(graph.edges ?? {});
+	return {
+		title: `Import ${graph.title || filename}`,
+		description: `Detected Chat Graph backup with ${nodes.length} nodes and ${edges.length} edges.`,
+		thread: { title: graph.title || filename, nodes, edges }
+	};
 }
 
-export function isMessageArray(data: unknown): boolean {
-	const messages = Array.isArray(data) ? data : isRecord(data) ? data.messages : undefined;
-	if (!Array.isArray(messages)) return false;
-	return messages.some((message) => isRecord(message) && typeof message.role === 'string' && ('content' in message || 'text' in message));
-}
-
-export function isRecord(value: unknown): value is UnknownRecord {
-	return typeof value === 'object' && value !== null && !Array.isArray(value);
+function graphStatePatch(graph: GraphState): GraphPatch {
+	return {
+		nodes: graph.nodes ?? {},
+		edges: graph.edges ?? {},
+		selected_node_ids: graph.selected_node_ids ?? [],
+		active_node_id: graph.active_node_id ?? null
+	};
 }

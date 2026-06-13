@@ -1,9 +1,11 @@
-import type { AgentMode, ChatEdge, ChatNode, ChatRole, EdgeKind, GraphNodeKind, GraphPatch, GraphState } from '../types';
+import type { AgentMode, ChatEdge, ChatNode, ChatRole, EdgeKind, GraphNodeKind, GraphState } from '../types';
+import type { GraphPatch } from '../importers/types';
 import { createSampleGraph } from '../data/sampleGraph';
 import { estimateTokens, makeId } from '../utils/id';
 
 export type GraphAction =
 	| { type: 'hydrate'; state: GraphState }
+	| { type: 'apply_patch'; patch: GraphPatch }
 	| { type: 'reset' }
 	| { type: 'add_node'; node: ChatNode; select?: boolean }
 	| { type: 'update_node'; id: string; patch: Partial<ChatNode> }
@@ -24,6 +26,9 @@ export function graphReducer(state: GraphState, action: GraphAction): GraphState
 	switch (action.type) {
 		case 'hydrate': {
 			return normalizeGraph(action.state);
+		}
+		case 'apply_patch': {
+			return applyGraphPatch(state, action.patch);
 		}
 		case 'reset': {
 			return createSampleGraph();
@@ -218,40 +223,35 @@ function normalizeGraph(state: GraphState): GraphState {
 }
 
 function applyGraphPatch(state: GraphState, patch: GraphPatch): GraphState {
+	const id_map = new Map<string, string>();
 	const nodes = { ...state.nodes };
-	for (const node of patch.add_nodes) {
-		nodes[node.id] = normalizeNode(node);
-	}
-	for (const update of patch.update_nodes ?? []) {
-		const old_node = nodes[update.id];
-		if (!old_node) continue;
-		nodes[update.id] = normalizeNode({ ...old_node, ...update.patch, updated_at: Date.now() });
+
+	for (const [id, node] of Object.entries(patch.nodes ?? {})) {
+		const next_id = nodes[id] ? makeId('import_node') : id;
+		id_map.set(id, next_id);
+		nodes[next_id] = normalizeNode({ ...node, id: next_id });
 	}
 
 	const edges = { ...state.edges };
-	for (const edge of patch.add_edges) {
-		if (!nodes[edge.from] || !nodes[edge.to]) continue;
-		edges[edge.id] = edge;
+	for (const [id, edge] of Object.entries(patch.edges ?? {})) {
+		const from = id_map.get(edge.from) ?? edge.from;
+		const to = id_map.get(edge.to) ?? edge.to;
+		if (!nodes[from] || !nodes[to]) continue;
+		const next_id = edges[id] ? makeId('import_edge') : id;
+		edges[next_id] = { ...edge, id: next_id, from, to };
 	}
 
-	const threads = { ...state.threads };
-	for (const thread of patch.add_threads ?? []) {
-		threads[thread.thread_id] = thread;
-	}
-
-	const import_manifests = { ...state.import_manifests };
-	for (const manifest of patch.add_import_manifests ?? []) {
-		import_manifests[manifest.id] = manifest;
-	}
+	const selected_node_ids = (patch.selected_node_ids ?? [])
+		.map((id) => id_map.get(id) ?? id)
+		.filter((id) => Boolean(nodes[id]));
+	const active_node_id = patch.active_node_id ? id_map.get(patch.active_node_id) ?? patch.active_node_id : selected_node_ids[0] ?? state.active_node_id;
 
 	return {
 		...state,
 		nodes,
 		edges,
-		threads,
-		import_manifests,
-		selected_node_ids: patch.select_node_ids ?? state.selected_node_ids,
-		active_node_id: patch.active_node_id === undefined ? state.active_node_id : patch.active_node_id,
+		selected_node_ids,
+		active_node_id: active_node_id && nodes[active_node_id] ? active_node_id : null,
 		linking_from_id: null
 	};
 }

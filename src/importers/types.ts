@@ -1,19 +1,27 @@
-import type { GraphPatch, ImportManifest, ImportedThread } from '../types';
+import type { ChatEdge, ChatNode } from '../types';
 
-export type ImportKind = 'chatgpt_mapping' | 'message_array' | 'generic_json' | 'chat_graph_backup';
+export type ImportedThread = {
+	title: string;
+	nodes: ChatNode[];
+	edges: ChatEdge[];
+};
 
 export type ImportPreview = {
-	kind: ImportKind;
-	file_name: string;
-	provider: string;
 	title: string;
-	message_count: number;
-	branch_count: number;
-	json_artifact_count: number;
-	estimated_tokens: number;
-	date_range: { start: number | null; end: number | null };
-	threads: ImportedThread[];
-	manifest: ImportManifest;
-	patch: GraphPatch;
-	warnings: string[];
+	description: string;
+	thread: ImportedThread;
+};
+
+export type ImportManifest = {
+	kind: 'chat_graph_backup' | 'message_array' | 'generic_json';
+	label: string;
+	description: string;
+	can_restore: boolean;
+};
+
+export type GraphPatch = {
+	nodes: Record<string, ChatNode>;
+	edges: Record<string, ChatEdge>;
+	selected_node_ids?: string[];
+	active_node_id?: string | null;
 };

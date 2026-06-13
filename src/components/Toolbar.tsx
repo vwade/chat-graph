@@ -4,17 +4,16 @@ import type { GraphState } from '../types';
 import { buildImportPreview } from '../importers/importer';
 import type { ImportPreview } from '../importers/types';
 import { downloadJson, readJsonFile } from '../storage/graphDb';
+import { detectImporter } from '../importers/detectImporter';
 import { graphStats } from '../utils/context';
 
 export function Toolbar() {
 	const { state, dispatch, loaded, save_error } = useGraph();
-	const input_ref = useRef<HTMLInputElement | null>(null);
-	const backup_input_ref = useRef<HTMLInputElement | null>(null);
-	const [preview, setPreview] = useState<ImportPreview | null>(null);
-	const [import_error, setImportError] = useState<string | null>(null);
+	const restore_input_ref = useRef<HTMLInputElement | null>(null);
+	const import_input_ref = useRef<HTMLInputElement | null>(null);
 	const stats = graphStats(state);
 
-	async function previewImport(event: ChangeEvent<HTMLInputElement>): Promise<void> {
+	async function restoreGraph(event: ChangeEvent<HTMLInputElement>): Promise<void> {
 		const file = event.target.files?.[0];
 		if (!file) return;
 		try {
@@ -49,10 +48,26 @@ export function Toolbar() {
 		}
 	}
 
-	function commitPreview(): void {
-		if (!preview) return;
-		dispatch({ type: 'apply_patch', patch: preview.patch });
-		setPreview(null);
+	async function importJson(event: ChangeEvent<HTMLInputElement>): Promise<void> {
+		const file = event.target.files?.[0];
+		if (!file) return;
+		try {
+			const json = await readJsonFile<unknown>(file);
+			const importer = detectImporter(json, file.name);
+			const preview = importer.preview;
+			const node_count = preview.thread.nodes.length;
+			const edge_count = preview.thread.edges.length;
+			const confirmed = window.confirm([
+				`${importer.label}: ${preview.title}`,
+				preview.description,
+				`Preview: ${node_count} nodes and ${edge_count} edges will be merged into the current graph.`,
+				'Continue with import?'
+			].join('\n\n'));
+			if (!confirmed) return;
+			dispatch({ type: 'apply_patch', patch: importer.createPatch() });
+		} finally {
+			event.target.value = '';
+		}
 	}
 
 	return (
@@ -70,10 +85,10 @@ export function Toolbar() {
 			</div>
 
 			<div className="toolbar-actions">
-				<span className={`save-state ${save_error || import_error ? 'error' : ''}`}>{import_error ?? save_error ?? (loaded ? 'IndexedDB autosave on' : 'Loading…')}</span>
-				<button type="button" onClick={() => downloadJson(`${state.title || 'chat-graph'}.json`, state)}>Export backup</button>
-				<button type="button" onClick={() => backup_input_ref.current?.click()}>Restore backup</button>
-				<button type="button" onClick={() => input_ref.current?.click()}>Import thread/JSON</button>
+				<span className={`save-state ${save_error ? 'error' : ''}`}>{save_error ? save_error : loaded ? 'IndexedDB autosave on' : 'Loading…'}</span>
+				<button type="button" onClick={() => downloadJson(`${state.title || 'chat-graph'}.json`, state)}>Export</button>
+				<button type="button" onClick={() => restore_input_ref.current?.click()}>Restore</button>
+				<button type="button" onClick={() => import_input_ref.current?.click()}>Import Backup</button>
 				<button
 					type="button"
 					onClick={() => {
@@ -84,8 +99,8 @@ export function Toolbar() {
 				>
 					Reset
 				</button>
-				<input ref={input_ref} type="file" accept="application/json" hidden onChange={previewImport} />
-				<input ref={backup_input_ref} type="file" accept="application/json" hidden onChange={restoreBackup} />
+				<input ref={restore_input_ref} type="file" accept="application/json" hidden onChange={restoreGraph} />
+				<input ref={import_input_ref} type="file" accept="application/json" hidden onChange={importJson} />
 			</div>
 
 			{preview ? (
