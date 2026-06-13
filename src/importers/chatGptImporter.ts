@@ -26,15 +26,16 @@ type ParsedMessage = {
 export function buildChatGptPreview(data: unknown, file_name: string, current: GraphState): ImportPreview {
 	const imported_at = Date.now();
 	const raw_hash = stableHash(data);
-	const title = isRecord(data) && typeof data.title === 'string' ? data.title : file_name.replace(/\.json$/i, '') || 'Imported ChatGPT thread';
-	const conversation_id = isRecord(data) && typeof data.conversation_id === 'string'
-		? data.conversation_id
-		: isRecord(data) && typeof data.id === 'string'
-			? data.id
+	const record = isRecord(data) ? data : {};
+	const title = typeof record.title === 'string' ? record.title : file_name.replace(/\.json$/i, '') || 'Imported ChatGPT thread';
+	const conversation_id = typeof record.conversation_id === 'string'
+		? record.conversation_id
+		: typeof record.id === 'string'
+			? record.id
 			: raw_hash;
 	const thread_id = makeId('thread_chatgpt');
 	const x = spawnX(current);
-	const mapping = isRecord(data) && isRecord(data.mapping) ? data.mapping : {};
+	const mapping = isRecord(record.mapping) ? record.mapping : {};
 	const parsed = parseMapping(mapping);
 	const root_messages = parsed.filter((message) => !message.parent_id || !parsed.some((candidate) => candidate.id === message.parent_id));
 	const branch_count = parsed.filter((message) => message.children.length > 1).length;
@@ -152,6 +153,8 @@ export function buildChatGptPreview(data: unknown, file_name: string, current: G
 		file_name,
 		provider: 'chatgpt',
 		title,
+		description: `Detected ChatGPT conversation with ${parsed.length} messages and ${branch_count} branch point${branch_count === 1 ? '' : 's'}.`,
+		thread: { title, nodes: all_nodes, edges },
 		message_count: parsed.length,
 		branch_count,
 		json_artifact_count,

@@ -172,7 +172,6 @@ function normalizeNode(node: ChatNode): ChatNode {
 		content_type: node.content_type ?? 'text/plain',
 		created_at: node.created_at ?? Date.now(),
 		updated_at: node.updated_at ?? Date.now(),
-		content_type: node.content_type ?? 'text/plain',
 		token_estimate: estimateTokens(node.text ?? ''),
 		layout: normalizeLayout(node)
 	};
@@ -227,22 +226,28 @@ function applyGraphPatch(state: GraphState, patch: GraphPatch): GraphState {
 	const id_map = new Map<string, string>();
 	const nodes = { ...state.nodes };
 
-	for (const [id, node] of Object.entries(patch.nodes ?? {})) {
-		const next_id = nodes[id] ? makeId('import_node') : id;
-		id_map.set(id, next_id);
+	for (const node of patch.add_nodes ?? []) {
+		const next_id = nodes[node.id] ? makeId('import_node') : node.id;
+		id_map.set(node.id, next_id);
 		nodes[next_id] = normalizeNode({ ...node, id: next_id });
 	}
 
+	for (const update of patch.update_nodes ?? []) {
+		const id = id_map.get(update.id) ?? update.id;
+		if (!nodes[id]) continue;
+		nodes[id] = normalizeNode({ ...nodes[id], ...update.patch, id });
+	}
+
 	const edges = { ...state.edges };
-	for (const [id, edge] of Object.entries(patch.edges ?? {})) {
+	for (const edge of patch.add_edges ?? []) {
 		const from = id_map.get(edge.from) ?? edge.from;
 		const to = id_map.get(edge.to) ?? edge.to;
 		if (!nodes[from] || !nodes[to]) continue;
-		const next_id = edges[id] ? makeId('import_edge') : id;
+		const next_id = edges[edge.id] ? makeId('import_edge') : edge.id;
 		edges[next_id] = { ...edge, id: next_id, from, to };
 	}
 
-	const selected_node_ids = (patch.selected_node_ids ?? [])
+	const selected_node_ids = (patch.select_node_ids ?? [])
 		.map((id) => id_map.get(id) ?? id)
 		.filter((id) => Boolean(nodes[id]));
 	const active_node_id = patch.active_node_id ? id_map.get(patch.active_node_id) ?? patch.active_node_id : selected_node_ids[0] ?? state.active_node_id;
@@ -251,6 +256,14 @@ function applyGraphPatch(state: GraphState, patch: GraphPatch): GraphState {
 		...state,
 		nodes,
 		edges,
+		threads: {
+			...state.threads,
+			...Object.fromEntries((patch.add_threads ?? []).map((thread) => [thread.thread_id, thread]))
+		},
+		import_manifests: {
+			...state.import_manifests,
+			...Object.fromEntries((patch.add_import_manifests ?? []).map((manifest) => [manifest.id, manifest]))
+		},
 		selected_node_ids,
 		active_node_id: active_node_id && nodes[active_node_id] ? active_node_id : null,
 		linking_from_id: null

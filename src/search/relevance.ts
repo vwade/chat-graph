@@ -53,3 +53,27 @@ function tokenize(text: string): Set<string> {
 const STOP_WORDS = new Set([
 	'that', 'this', 'with', 'from', 'have', 'will', 'would', 'there', 'their', 'about', 'into', 'then', 'than', 'when', 'what', 'where', 'which', 'your', 'they', 'them', 'been', 'were', 'because', 'context', 'node', 'graph'
 ]);
+
+export function normalizeTags(tags: string[]): string[] {
+	return [...new Set(tags.map((tag) => tag.trim().toLowerCase()).filter(Boolean))];
+}
+
+export function scoreNodeRelevance(
+	node: ChatNode,
+	input: { query: string; tags: string[]; anchor: ChatNode | null }
+): RelevanceScore & { matched_terms: string[]; matched_tags: string[] } {
+	const query_tokens = tokenize(input.query);
+	const node_tokens = tokenize(`${node.title} ${node.text} ${node.tags.join(' ')}`);
+	const matched_terms = [...query_tokens].filter((token) => node_tokens.has(token));
+	const normalized_node_tags = normalizeTags(node.tags);
+	const matched_tags = normalized_node_tags.filter((tag) => input.tags.includes(tag));
+	const anchor_tokens = input.anchor ? tokenize(`${input.anchor.title} ${input.anchor.text} ${input.anchor.tags.join(' ')}`) : new Set<string>();
+	const anchor_tags = new Set(input.anchor ? normalizeTags(input.anchor.tags) : []);
+	const anchor_threads = new Set<string | undefined>(input.anchor?.thread_id ? [input.anchor.thread_id] : []);
+	const base = scoreNode(node, new Set([...query_tokens, ...anchor_tokens]), anchor_tags, anchor_threads);
+	const score = base.score + matched_terms.length * 0.2 + matched_tags.length * 0.3;
+	const reasons = [...base.reasons];
+	if (matched_terms.length > 0) reasons.push('query term match');
+	if (matched_tags.length > 0) reasons.push('tag filter match');
+	return { node, score, reasons, matched_terms, matched_tags };
+}
