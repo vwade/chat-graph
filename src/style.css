@@ -215,7 +215,7 @@ select:focus {
 
 .side-pane {
 	display: grid;
-	grid-template-rows: minmax(180px, 1fr) auto minmax(250px, 0.9fr);
+	grid-template-rows: minmax(180px, 1fr) minmax(150px, 0.55fr) auto minmax(250px, 0.9fr);
 	gap: 0.75rem;
 	min-height: 0;
 	padding: 0.75rem;
@@ -232,9 +232,14 @@ select:focus {
 }
 
 .chat-panel,
+.context-candidates,
 .inspector {
 	display: grid;
 	grid-template-rows: auto 1fr;
+}
+
+.chat-panel {
+	grid-template-rows: auto auto 1fr;
 }
 
 .panel-heading {
@@ -445,4 +450,110 @@ label span {
 		border-top: 1px solid var(--line);
 		overflow: auto;
 	}
+}
+
+.compiler-controls {
+	display: flex;
+	align-items: center;
+	gap: 0.45rem;
+	flex-wrap: wrap;
+	padding: 0.68rem 0.75rem;
+	border-bottom: 1px solid var(--line);
+}
+
+.compiler-controls label {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.32rem;
+	border: 1px solid var(--line);
+	border-radius: 999px;
+	background: rgba(7, 12, 24, 0.42);
+	padding: 0.26rem 0.52rem;
+}
+
+.compiler-controls input[type="checkbox"] {
+	width: auto;
+	padding: 0;
+	accent-color: var(--accent-strong);
+}
+
+.compiler-controls label span {
+	margin: 0;
+	font-size: 0.72rem;
+	color: #c8d7f5;
+}
+
+
+.import-preview {
+	position: fixed;
+	inset: 0;
+	display: grid;
+	place-items: center;
+	z-index: 20;
+	background: rgba(3, 7, 18, 0.72);
+	backdrop-filter: blur(10px);
+}
+
+.import-card {
+	width: min(640px, calc(100vw - 2rem));
+	border: 1px solid var(--line);
+	border-radius: 18px;
+	background: var(--panel);
+	box-shadow: 0 30px 80px rgba(0, 0, 0, 0.45);
+}
+
+.import-body {
+	display: grid;
+	gap: 0.75rem;
+	padding: 0.95rem;
+}
+
+.import-stats {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 0.5rem;
+}
+
+.import-stats span,
+.candidate-card {
+	border: 1px solid var(--line);
+	border-radius: 14px;
+	background: var(--panel-soft);
+	padding: 0.65rem;
+}
+
+.import-actions {
+	justify-content: flex-end;
+	padding: 0 0.95rem 0.95rem;
+}
+
+.context-candidates {
+	display: grid;
+	grid-template-rows: auto 1fr;
+	overflow: hidden;
+}
+
+.candidate-list {
+	display: flex;
+	flex-direction: column;
+	gap: 0.55rem;
+	overflow: auto;
+	padding: 0.75rem;
+}
+
+.candidate-card header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 0.75rem;
+}
+
+.candidate-card strong {
+	font-size: 0.86rem;
+}
+
+.candidate-card p {
+	margin: 0.45rem 0 0;
+	color: var(--muted);
+	font-size: 0.78rem;
 }

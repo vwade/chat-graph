@@ -81,7 +81,7 @@ export function GraphCanvas() {
 
 			if (picked) {
 				if (current_state.linking_from_id && current_state.linking_from_id !== picked) {
-					dispatch_ref.current({ type: 'finish_link', to: picked, kind: event.altKey ? 'contradicts' : 'reference' });
+					dispatch_ref.current({ type: 'finish_link', to: picked, kind: event.altKey ? 'contradicts' : 'references' });
 					return;
 				}
 
@@ -347,7 +347,7 @@ function createNodeTextSprite(node: ChatNode, selected: boolean, linking: boolea
 
 	ctx.font = '600 28px system-ui, -apple-system, Segoe UI, sans-serif';
 	ctx.fillStyle = linking ? 'rgba(125, 223, 242, 0.98)' : 'rgba(179, 193, 224, 0.9)';
-	const meta = `${node.role.toUpperCase()} · ${node.token_estimate} tok`;
+	const meta = `${node.kind.replaceAll('_', ' ').toUpperCase()} · ${node.token_estimate} tok`;
 	ctx.fillText(meta, 56, 130);
 
 	ctx.font = '32px system-ui, -apple-system, Segoe UI, sans-serif';
@@ -392,6 +392,7 @@ function roleColor(role: ChatNode['role'], selected: boolean, linking: boolean):
 	switch (role) {
 		case 'system': return 0x47306f;
 		case 'context': return 0x5b4a1f;
+		case 'tool': return 0x6d3a53;
 		case 'user': return 0x244d76;
 		case 'assistant': return 0x265c4a;
 		default: return 0x334155;
@@ -400,11 +401,21 @@ function roleColor(role: ChatNode['role'], selected: boolean, linking: boolean):
 
 function edgeColor(kind: EdgeKind): number {
 	switch (kind) {
+		case 'reply_to':
 		case 'reply': return 0x7dd3fc;
+		case 'uses_context':
 		case 'context': return 0xfacc15;
+		case 'branches_from':
 		case 'branch': return 0xc084fc;
 		case 'supports': return 0x86efac;
 		case 'contradicts': return 0xf87171;
+		case 'revises': return 0xfbbf24;
+		case 'summarizes': return 0x5eead4;
+		case 'contains': return 0xd8b4fe;
+		case 'generated': return 0x93c5fd;
+		case 'tool_input':
+		case 'tool_output': return 0xfb7185;
+		case 'references':
 		case 'reference':
 		default:
 			return 0xa7b5d6;

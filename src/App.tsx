@@ -1,5 +1,6 @@
 import { ChatPanel } from './components/ChatPanel';
 import { Composer } from './components/Composer';
+import { ContextCandidates } from './components/ContextCandidates';
 import { GraphCanvas } from './components/GraphCanvas';
 import { Inspector } from './components/Inspector';
 import { Toolbar } from './components/Toolbar';
@@ -16,6 +17,7 @@ export default function App() {
 					</section>
 					<aside className="side-pane">
 						<ChatPanel />
+						<ContextCandidates />
 						<Composer />
 						<Inspector />
 					</aside>

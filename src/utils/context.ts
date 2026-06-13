@@ -1,4 +1,12 @@
-import type { ChatEdge, ChatNode, ContextBundle, GraphState } from '../types';
+import type { ChatEdge, ChatNode, ContextBundle, ContextTraversalOptions, EdgeKind, GraphState } from '../types';
+
+export const DEFAULT_CONTEXT_TRAVERSAL: ContextTraversalOptions = {
+	include_ancestors: true,
+	include_direct_replies: false,
+	include_references: true,
+	include_contradictions: false,
+	include_tool_outputs: false
+};
 
 function byCreatedAt<T extends { created_at: number }>(a: T, b: T): number {
 	return a.created_at - b.created_at;
@@ -6,8 +14,27 @@ function byCreatedAt<T extends { created_at: number }>(a: T, b: T): number {
 
 function roleToAgentRole(role: ChatNode['role']): 'system' | 'user' | 'assistant' {
 	if (role === 'assistant') return 'assistant';
-	if (role === 'system' || role === 'context') return 'system';
+	if (role === 'system' || role === 'context' || role === 'tool') return 'system';
 	return 'user';
+}
+
+function isReplyEdge(kind: EdgeKind): boolean {
+	return kind === 'reply_to' || kind === 'reply';
+}
+
+function isContradictionEdge(kind: EdgeKind): boolean {
+	return kind === 'contradicts';
+}
+
+function isToolOutputEdge(kind: EdgeKind): boolean {
+	return kind === 'tool_output';
+}
+
+function shouldTraverseOutgoing(edge: ChatEdge, options: ContextTraversalOptions): boolean {
+	if (isReplyEdge(edge.kind)) return options.include_direct_replies;
+	if (isContradictionEdge(edge.kind)) return options.include_contradictions;
+	if (isToolOutputEdge(edge.kind)) return options.include_tool_outputs;
+	return options.include_references;
 }
 
 export function buildIncomingEdgeIndex(edges: Record<string, ChatEdge>): Map<string, ChatEdge[]> {
@@ -30,7 +57,12 @@ export function buildOutgoingEdgeIndex(edges: Record<string, ChatEdge>): Map<str
 	return outgoing;
 }
 
-export function buildContextBundle(state: GraphState, anchor_ids: string[], radius: number): ContextBundle {
+export function buildContextBundle(
+	state: GraphState,
+	anchor_ids: string[],
+	radius: number,
+	options: ContextTraversalOptions = DEFAULT_CONTEXT_TRAVERSAL
+): ContextBundle {
 	const anchors = anchor_ids.length > 0 ? anchor_ids : state.active_node_id ? [state.active_node_id] : [];
 	const incoming = buildIncomingEdgeIndex(state.edges);
 	const outgoing = buildOutgoingEdgeIndex(state.edges);
@@ -48,13 +80,17 @@ export function buildContextBundle(state: GraphState, anchor_ids: string[], radi
 
 		if (current.depth >= radius) continue;
 
-		const inbound = incoming.get(current.id) ?? [];
-		for (const edge of inbound) {
-			queue.push({ id: edge.from, depth: current.depth + 1 });
+		if (options.include_ancestors) {
+			const inbound = incoming.get(current.id) ?? [];
+			for (const edge of inbound) {
+				if (isContradictionEdge(edge.kind) && !options.include_contradictions) continue;
+				if (isToolOutputEdge(edge.kind) && !options.include_tool_outputs) continue;
+				queue.push({ id: edge.from, depth: current.depth + 1 });
+			}
 		}
 
-		const references = (outgoing.get(current.id) ?? []).filter((edge) => edge.kind !== 'reply');
-		for (const edge of references) {
+		const outgoing_edges = (outgoing.get(current.id) ?? []).filter((edge) => shouldTraverseOutgoing(edge, options));
+		for (const edge of outgoing_edges) {
 			queue.push({ id: edge.to, depth: current.depth + 1 });
 		}
 	}
@@ -72,7 +108,7 @@ export function buildContextBundle(state: GraphState, anchor_ids: string[], radi
 	const digest = nodes
 		.map((node) => {
 			const tags = node.tags.length ? ` tags=${node.tags.join(',')}` : '';
-			return `[${node.role}:${node.id}] ${node.title}${tags}\n${node.text.trim()}`;
+			return `[${node.kind}:${node.id}] ${node.title}${tags}\n${node.text.trim()}`;
 		})
 		.join('\n\n---\n\n');
 
@@ -97,11 +133,12 @@ export function getSelectedNode(state: GraphState): ChatNode | null {
 	return id ? state.nodes[id] ?? null : null;
 }
 
-export function graphStats(state: GraphState): { node_count: number; edge_count: number; token_estimate: number } {
+export function graphStats(state: GraphState): { node_count: number; edge_count: number; thread_count: number; token_estimate: number } {
 	const nodes = Object.values(state.nodes);
 	return {
 		node_count: nodes.length,
 		edge_count: Object.keys(state.edges).length,
+		thread_count: Object.keys(state.threads ?? {}).length,
 		token_estimate: nodes.reduce((sum, node) => sum + node.token_estimate, 0)
 	};
 }
