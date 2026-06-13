@@ -2,6 +2,32 @@
 
 Chat Graph turns conversation history into navigable context. The near-term roadmap focuses on turning the prototype into a stable foundation for graph-native agent work.
 
+
+## Long-term thesis
+
+Chat Graph turns scattered conversations into a shared semantic space.
+
+A thread is a subgraph.\
+A transcript is a selected path.\
+A memory is a durable node.\
+A summary is a derived node with provenance.\
+An agent reply is a graph mutation.\
+Context is not history; context is a compiled view.
+
+## Near-term sequencing
+
+1. Import Preview
+2. GraphPatch commit flow
+3. Provenance/trust metadata
+4. Semantic indexing status
+5. Semantic search
+6. Context candidates
+7. Context Compiler v2
+8. Agent registry
+9. Force-directed / 3D layout
+
+Force-directed and 3D layout remain part of the roadmap, but they come after import flows and semantic retrieval are in place so visual exploration builds on durable graph data and useful context discovery.
+
 ## v0.1 — Prototype Foundation
 
 - Three.js 2D graph canvas
