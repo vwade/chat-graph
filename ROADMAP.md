@@ -31,6 +31,30 @@ Chat Graph turns conversation history into navigable context. The near-term road
 - Conversation snapshots
 - Graph diff / merge tools
 
+
+
+## Long-term thesis
+
+Chat Graph turns scattered conversations into a shared semantic space.
+
+- A thread is a subgraph.
+- A transcript is a selected path.
+- A memory is a durable node.
+- A summary is a derived node with provenance.
+- An agent reply is a graph mutation.
+- Context is not history; context is a compiled view.
+
+## Import and semantic retrieval sequence
+
+1. Import Preview for ChatGPT exports, message arrays, and generic JSON files.
+2. GraphPatch commits so large imports merge into the current graph without replacing it.
+3. Provenance, trust, content type, thread, branch, and JSON metadata on imported nodes.
+4. Local semantic context candidates as the first relevance layer.
+5. Backend semantic index status and vector-store adapters, with ChromaDB as a likely local bridge.
+6. Context Compiler v2 with hard context, soft context, exclusions, provenance, and token budgets.
+7. Multi-agent registry so different providers share the same contextual graph space.
+8. Force-directed 2D/3D layout after the graph has semantic gravity.
+
 ## Design questions
 
 ### What does a node mean?
@@ -45,6 +69,8 @@ type GraphNodeKind =
 	| 'summary'
 	| 'memory'
 	| 'artifact'
+	| 'json_artifact'
+	| 'json_field'
 	| 'tool_call'
 	| 'tool_result'
 	| 'decision'
@@ -52,6 +78,9 @@ type GraphNodeKind =
 	| 'claim'
 	| 'reference'
 	| 'branch_root'
+	| 'thread_root'
+	| 'agent_session'
+	| 'semantic_cluster'
 	| 'context_bundle';
 ```
 
@@ -69,10 +98,12 @@ type GraphEdgeKind =
 	| 'contradicts'
 	| 'revises'
 	| 'branches_from'
+	| 'variant_of'
 	| 'summarizes'
 	| 'contains'
 	| 'uses_context'
 	| 'generated'
+	| 'semantic_match'
 	| 'tool_input'
 	| 'tool_output';
 ```

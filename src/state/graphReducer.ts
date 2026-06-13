@@ -1,4 +1,4 @@
-import type { AgentMode, ChatEdge, ChatNode, ChatRole, EdgeKind, GraphNodeKind, GraphState } from '../types';
+import type { AgentMode, ChatEdge, ChatNode, ChatRole, EdgeKind, GraphNodeKind, GraphPatch, GraphState } from '../types';
 import { createSampleGraph } from '../data/sampleGraph';
 import { estimateTokens, makeId } from '../utils/id';
 
@@ -12,6 +12,7 @@ export type GraphAction =
 	| { type: 'set_active_node'; id: string | null }
 	| { type: 'delete_selected' }
 	| { type: 'add_edge'; edge: ChatEdge }
+	| { type: 'apply_patch'; patch: GraphPatch }
 	| { type: 'begin_link'; id: string }
 	| { type: 'finish_link'; to: string; kind?: EdgeKind }
 	| { type: 'cancel_link' }
@@ -102,6 +103,9 @@ export function graphReducer(state: GraphState, action: GraphAction): GraphState
 				edges: { ...state.edges, [action.edge.id]: action.edge }
 			};
 		}
+		case 'apply_patch': {
+			return applyGraphPatch(state, action.patch);
+		}
 		case 'begin_link': {
 			if (!state.nodes[action.id]) return state;
 			return { ...state, linking_from_id: action.id };
@@ -148,6 +152,7 @@ function normalizeNode(node: ChatNode): ChatNode {
 		tags: Array.isArray(node.tags) ? node.tags : [],
 		status: node.status ?? 'idle',
 		kind: node.kind ?? kindFromRole(node.role),
+		content_type: node.content_type ?? 'text/plain',
 		created_at: node.created_at ?? Date.now(),
 		updated_at: node.updated_at ?? Date.now(),
 		token_estimate: estimateTokens(node.text ?? '')
@@ -185,5 +190,44 @@ function normalizeGraph(state: GraphState): GraphState {
 		agent_mode: state.agent_mode ?? 'mock',
 		http_endpoint: state.http_endpoint ?? '/api/chat',
 		last_saved_at: state.last_saved_at ?? null
+	};
+}
+
+function applyGraphPatch(state: GraphState, patch: GraphPatch): GraphState {
+	const nodes = { ...state.nodes };
+	for (const node of patch.add_nodes) {
+		nodes[node.id] = normalizeNode(node);
+	}
+	for (const update of patch.update_nodes ?? []) {
+		const old_node = nodes[update.id];
+		if (!old_node) continue;
+		nodes[update.id] = normalizeNode({ ...old_node, ...update.patch, updated_at: Date.now() });
+	}
+
+	const edges = { ...state.edges };
+	for (const edge of patch.add_edges) {
+		if (!nodes[edge.from] || !nodes[edge.to]) continue;
+		edges[edge.id] = edge;
+	}
+
+	const threads = { ...state.threads };
+	for (const thread of patch.add_threads ?? []) {
+		threads[thread.thread_id] = thread;
+	}
+
+	const import_manifests = { ...state.import_manifests };
+	for (const manifest of patch.add_import_manifests ?? []) {
+		import_manifests[manifest.id] = manifest;
+	}
+
+	return {
+		...state,
+		nodes,
+		edges,
+		threads,
+		import_manifests,
+		selected_node_ids: patch.select_node_ids ?? state.selected_node_ids,
+		active_node_id: patch.active_node_id === undefined ? state.active_node_id : patch.active_node_id,
+		linking_from_id: null
 	};
 }

@@ -18,6 +18,8 @@ The app is intentionally frontend-first. It ships with a built-in mock agent so 
 - Merge multiple selected nodes into one new user turn.
 - Link arbitrary nodes with reference edges; Alt-click while linking creates a contradiction edge.
 - Context compiler previews prompt bundles from selected graph neighborhoods with traversal toggles.
+- Additive thread/JSON import previews that preserve imported conversations as unique threads.
+- Local semantic context candidates for finding related nodes and creating reference edges.
 - Node inspector with editable title, semantic node kind, body, tags, context radius, and agent settings.
 - IndexedDB autosave.
 - JSON import/export.
@@ -75,6 +77,10 @@ The endpoint can return any of these shapes:
 
 Do not place private API keys in the browser. Use a small backend proxy for commercial model APIs.
 
+## Long-term goal
+
+Chat Graph is a local-first semantic conversation graph for humans and agents. It imports chats from many sources, preserves branching conversations, keeps JSON artifacts inspectable, recommends relevant context, and gives multiple model providers one shared graph space to work in.
+
 ## Mental model
 
 The graph is the database. The chat transcript is a temporary projection of whichever nodes you select. This means you can keep separate threads, synthesize multiple branches, attach durable context cards, and preserve contradictory branches without forcing the whole conversation into one fragile timeline.
@@ -86,9 +92,9 @@ See [ROADMAP.md](./ROADMAP.md) for the v0.1–v0.3 plan, semantic node and edge 
 ## Suggested next steps
 
 - Add edge editing and edge labels.
-- Add graph search by tag/title/body.
+- Connect semantic context candidates to a backend vector store such as ChromaDB.
 - Add streaming token updates from the HTTP endpoint.
 - Add summarizer nodes that compress large subgraphs.
-- Add layout tools: radial, force-directed, chronological lane, and manual pinning.
+- Add layout tools: radial, force-directed 2D/3D, chronological lane, and manual pinning.
 - Add per-node embedding vectors and semantic neighborhood expansion.
 - Add an agent tool channel so graph mutations can be suggested or performed by the agent.

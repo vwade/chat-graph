@@ -27,6 +27,7 @@ export function createSampleGraph(): GraphState {
 	const system = node({
 		id: 'node_system_seed',
 		role: 'system',
+		content_type: 'text/plain',
 		kind: 'system_instruction',
 		title: 'System seed',
 		text: 'Chat Graph treats conversation as a navigable knowledge graph. Every user message, assistant reply, and reusable context note is a node. Edges describe reply chains, context citations, branches, references, support, or contradiction.',
@@ -37,6 +38,7 @@ export function createSampleGraph(): GraphState {
 	const concept = node({
 		id: 'node_context_thesis',
 		role: 'context',
+		content_type: 'text/plain',
 		kind: 'memory',
 		title: 'Design thesis',
 		text: 'The graph is the source of truth. A linear chat transcript is only a view produced by walking selected graph edges. Sending a message from several selected nodes creates a nonlinear context merge.',
@@ -48,6 +50,7 @@ export function createSampleGraph(): GraphState {
 	const user = node({
 		id: 'node_user_seed',
 		role: 'user',
+		content_type: 'text/plain',
 		kind: 'user_message',
 		title: 'Initial user prompt',
 		text: 'I want a nonlinear chat interface where messages can link into a 2D graph and spawn branches from any prior context.',
@@ -58,6 +61,7 @@ export function createSampleGraph(): GraphState {
 	const assistant = node({
 		id: 'node_assistant_seed',
 		role: 'assistant',
+		content_type: 'text/plain',
 		kind: 'assistant_message',
 		title: 'Mock assistant reply',
 		text: 'That suggests a context lens: select one or more nodes, gather nearby graph history, then compose the next turn against that bundle. The visual editor becomes both memory map and prompt router.',
@@ -80,6 +84,8 @@ export function createSampleGraph(): GraphState {
 		title: 'Chat Graph',
 		nodes: Object.fromEntries(nodes.map((entry) => [entry.id, entry])),
 		edges: Object.fromEntries(edges.map((entry) => [entry.id, entry])),
+		threads: {},
+		import_manifests: {},
 		selected_node_ids: [assistant.id],
 		active_node_id: assistant.id,
 		linking_from_id: null,
