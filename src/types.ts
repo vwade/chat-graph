@@ -1,3 +1,5 @@
+import type { LayoutNodeState } from './layout/layoutTypes';
+
 export type ChatRole = 'system' | 'user' | 'assistant' | 'context';
 
 export type GraphNodeKind =
@@ -58,6 +60,7 @@ export type ChatNode = {
 	model?: string;
 	status: ChatNodeStatus;
 	token_estimate: number;
+	layout?: LayoutNodeState;
 };
 
 export type ChatEdge = {
