@@ -30,6 +30,7 @@ export function Composer() {
 		const user_node = makeNode({
 			id: user_id,
 			role: 'user',
+			content_type: 'text/plain',
 			kind: 'user_message',
 			title: firstLine(user_text, 'User turn'),
 			text: user_text,
@@ -40,6 +41,7 @@ export function Composer() {
 		const assistant_node = makeNode({
 			id: assistant_id,
 			role: 'assistant',
+			content_type: 'text/plain',
 			kind: 'assistant_message',
 			title: 'Agent reply',
 			text: 'Gathering selected graph context…',
