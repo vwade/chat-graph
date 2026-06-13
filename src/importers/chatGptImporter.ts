@@ -1,6 +1,5 @@
 import type { ChatNode, ChatRole, GraphPatch, GraphState } from '../types';
 import { estimateTokens, makeId } from '../utils/id';
-import { isRecord } from './detectImporter';
 import { makeImportedEdge, makeImportedNode, makeManifest, makeThread, safeText, stableHash } from './importUtils';
 import type { ImportPreview } from './types';
 
@@ -22,6 +21,11 @@ type ParsedMessage = {
 	content_json?: unknown;
 	content_type: ChatNode['content_type'];
 };
+
+export function canImportChatGptMapping(data: unknown): boolean {
+	const record = isRecord(data) ? data : {};
+	return isRecord(record.mapping);
+}
 
 export function buildChatGptPreview(data: unknown, file_name: string, current: GraphState): ImportPreview {
 	const imported_at = Date.now();
@@ -223,4 +227,8 @@ function normalizeRole(value: unknown): ChatRole {
 function spawnX(current: GraphState): number {
 	const xs = Object.values(current.nodes).map((node) => node.x);
 	return xs.length ? Math.max(...xs) + 480 : -320;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 }

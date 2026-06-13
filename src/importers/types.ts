@@ -26,7 +26,7 @@ export type ImportPreview = {
 };
 
 export type ImportManifest = {
-	kind: 'chat_graph_backup' | 'message_array' | 'generic_json';
+	kind: 'chatgpt_mapping' | 'chat_graph_backup' | 'message_array' | 'generic_json';
 	label: string;
 	description: string;
 	can_restore: boolean;
