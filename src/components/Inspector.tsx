@@ -39,6 +39,7 @@ export function Inspector() {
 			node: {
 				id: makeId(`node_${role}`),
 				role,
+				content_type: 'text/plain',
 				kind: kindFromRole(role),
 				title: `${role[0].toUpperCase()}${role.slice(1)} node`,
 				text,
@@ -98,6 +99,7 @@ export function Inspector() {
 				<button type="button" onClick={() => addLooseNode('context')}>Add context</button>
 				<button type="button" onClick={() => addLooseNode('system')}>Add system</button>
 				<button type="button" onClick={() => addLooseNode('user')}>Add user</button>
+				<button type="button" onClick={() => addLooseNode('tool')}>Add tool</button>
 			</div>
 
 			{node ? (
@@ -161,6 +163,8 @@ const NODE_KIND_OPTIONS: GraphNodeKind[] = [
 	'summary',
 	'memory',
 	'artifact',
+	'json_artifact',
+	'json_field',
 	'tool_call',
 	'tool_result',
 	'decision',
@@ -168,6 +172,9 @@ const NODE_KIND_OPTIONS: GraphNodeKind[] = [
 	'claim',
 	'reference',
 	'branch_root',
+	'thread_root',
+	'agent_session',
+	'semantic_cluster',
 	'context_bundle'
 ];
 
@@ -176,6 +183,7 @@ function kindFromRole(role: ChatRole): GraphNodeKind {
 		case 'assistant': return 'assistant_message';
 		case 'system': return 'system_instruction';
 		case 'context': return 'memory';
+		case 'tool': return 'tool_result';
 		case 'user':
 		default:
 			return 'user_message';

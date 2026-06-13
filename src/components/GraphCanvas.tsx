@@ -392,6 +392,7 @@ function roleColor(role: ChatNode['role'], selected: boolean, linking: boolean):
 	switch (role) {
 		case 'system': return 0x47306f;
 		case 'context': return 0x5b4a1f;
+		case 'tool': return 0x6d3a53;
 		case 'user': return 0x244d76;
 		case 'assistant': return 0x265c4a;
 		default: return 0x334155;
