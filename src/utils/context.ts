@@ -1,3 +1,4 @@
+export * from '../graph/contextCompiler';
 import type { ChatEdge, ChatNode, ContextBundle, ContextTraversalOptions, EdgeKind, GraphState } from '../types';
 
 export const DEFAULT_CONTEXT_TRAVERSAL: ContextTraversalOptions = {

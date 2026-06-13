@@ -57,7 +57,9 @@ export function ChatPanel() {
 						Select a node on the canvas. The compiler will show the exact graph context that can become the next agent payload.
 					</div>
 				) : (
-					bundle.nodes.map((node) => (
+					bundle.items.map((item) => {
+						const node = item.node;
+						return (
 						<article
 							className={`chat-card role-${node.role} ${state.selected_node_ids.includes(node.id) ? 'selected-card' : ''}`}
 							key={node.id}
@@ -68,14 +70,26 @@ export function ChatPanel() {
 								<strong>{node.title}</strong>
 							</header>
 							<p>{node.text}</p>
+							<div className="context-reasons" aria-label="Context inclusion reasons">
+								<span className="reason-label">Included because</span>
+								{item.reasons.map((reason) => (
+									<span className="reason-chip" key={reason}>{formatReason(reason)}</span>
+								))}
+							</div>
 							<footer>
 								<span>{new Date(node.created_at).toLocaleTimeString()}</span>
 								<span>{node.token_estimate} tok</span>
 							</footer>
 						</article>
-					))
+						);
+					})
 				)}
 			</div>
 		</section>
 	);
+}
+
+
+function formatReason(reason: string): string {
+	return reason.split('_').join(' ');
 }
