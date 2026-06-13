@@ -171,6 +171,21 @@ export function buildChatGptPreview(data: unknown, file_name: string, current: G
 	};
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
+
+function isChatGptMapping(value: unknown): value is Record<string, unknown> {
+	if (!isRecord(value)) return false;
+	const mapping = value.mapping;
+	if (!isRecord(mapping)) return false;
+	return Object.values(mapping).some((entry) => isRecord(entry) && isRecord(entry.message));
+}
+
+export function canImportChatGptMapping(value: unknown): boolean {
+	return isChatGptMapping(value);
+}
+
 function parseMapping(mapping: Record<string, unknown>): ParsedMessage[] {
 	return Object.entries(mapping).flatMap(([id, entry]) => {
 		if (!isRecord(entry)) return [];

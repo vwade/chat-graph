@@ -83,12 +83,23 @@ function graphStatePatch(graph: GraphState): GraphPatch {
 	};
 }
 
-export function isRecord(value: unknown): value is Record<string, unknown> {
-	return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
-}
-
-export function isChatGraphBackup(value: unknown): value is GraphState {
-	return isGraphState(value);
+function emptyGraphState(): GraphState {
+	return {
+		schema_version: 1,
+		graph_id: 'import-preview',
+		title: 'Import preview',
+		nodes: {},
+		edges: {},
+		threads: {},
+		import_manifests: {},
+		selected_node_ids: [],
+		active_node_id: null,
+		linking_from_id: null,
+		context_radius: 2,
+		agent_mode: 'mock',
+		http_endpoint: '',
+		last_saved_at: null
+	};
 }
 
 function emptyGraphState(): GraphState {
