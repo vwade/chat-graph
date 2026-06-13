@@ -1,6 +1,6 @@
 import type { GraphState } from '../types';
-import { previewGenericJson } from './genericJsonImporter';
-import { isMessageArray, previewMessageArray, previewToPatch } from './messageArrayImporter';
+import { genericJsonPatch, previewGenericJson } from './genericJsonImporter';
+import { isMessageArray, messageArrayPatch, previewMessageArray } from './messageArrayImporter';
 import type { GraphPatch, ImportManifest, ImportPreview } from './types';
 
 export type DetectedImporter = ImportManifest & {
@@ -27,7 +27,7 @@ export function detectImporter(value: unknown, filename: string): DetectedImport
 			description: 'Detected an array of role/content chat messages.',
 			can_restore: false,
 			preview,
-			createPatch: () => previewToPatch(preview)
+			createPatch: () => messageArrayPatch(value, filename)
 		};
 	}
 	const preview = previewGenericJson(value, filename);
@@ -37,7 +37,7 @@ export function detectImporter(value: unknown, filename: string): DetectedImport
 		description: 'Detected arbitrary JSON and converted it to artifact nodes.',
 		can_restore: false,
 		preview,
-		createPatch: () => previewToPatch(preview)
+		createPatch: () => genericJsonPatch(value, filename)
 	};
 }
 

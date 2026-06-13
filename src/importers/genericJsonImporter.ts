@@ -2,6 +2,7 @@ import type { ChatEdge, ChatNode } from '../types';
 import { estimateTokens, firstLine, makeId } from '../utils/id';
 import type { GraphPatch, ImportPreview } from './types';
 import { previewToPatch } from './messageArrayImporter';
+import { stableHash } from './importUtils';
 
 const MAX_CHILDREN = 24;
 const MAX_TEXT = 4000;
@@ -40,6 +41,10 @@ export function previewGenericJson(value: unknown, filename: string): ImportPrev
 		});
 	});
 	return {
+		kind: 'generic_json',
+		file_name: filename,
+		provider: 'generic_json',
+		json_artifact_count: nodes.length,
 		title: `Import ${filename}`,
 		description: `Detected arbitrary JSON and prepared ${nodes.length} artifact node${nodes.length === 1 ? '' : 's'}.`,
 		thread: { title: filename, nodes, edges }
@@ -47,7 +52,13 @@ export function previewGenericJson(value: unknown, filename: string): ImportPrev
 }
 
 export function genericJsonPatch(value: unknown, filename: string): GraphPatch {
-	return previewToPatch(previewGenericJson(value, filename));
+	const preview = previewGenericJson(value, filename);
+	return previewToPatch(preview, {
+		provider: 'generic_json',
+		file_name: filename,
+		raw_hash: stableHash(value),
+		json_artifact_count: preview.json_artifact_count ?? 0
+	});
 }
 
 function createArtifactNode(input: Pick<ChatNode, 'id' | 'title' | 'text' | 'x' | 'y' | 'created_at'>): ChatNode {

@@ -1,6 +1,7 @@
 import type { ChatEdge, ChatNode, ChatRole, GraphNodeKind } from '../types';
 import { estimateTokens, firstLine, makeId } from '../utils/id';
 import type { GraphPatch, ImportPreview } from './types';
+import { makeManifest, makeThread, stableHash } from './importUtils';
 
 type MessageLike = {
 	role?: unknown;
@@ -35,6 +36,9 @@ export function previewMessageArray(value: MessageLike[], filename: string): Imp
 	});
 	const edges = nodes.slice(1).map((node, index) => createEdge(nodes[index].id, node.id, now + index + 1));
 	return {
+		kind: 'message_array',
+		file_name: filename,
+		provider: 'message_array',
 		title: `Import ${filename}`,
 		description: `Detected ${nodes.length} chat messages.`,
 		thread: { title: filename, nodes, edges }
@@ -43,15 +47,54 @@ export function previewMessageArray(value: MessageLike[], filename: string): Imp
 
 export function messageArrayPatch(value: MessageLike[], filename: string): GraphPatch {
 	const preview = previewMessageArray(value, filename);
-	return previewToPatch(preview);
+	return previewToPatch(preview, {
+		provider: 'message_array',
+		file_name: filename,
+		raw_hash: stableHash(value),
+		json_artifact_count: 0
+	});
 }
 
-export function previewToPatch(preview: ImportPreview): GraphPatch {
+export function previewToPatch(preview: ImportPreview, metadata: {
+	provider?: string;
+	file_name?: string;
+	raw_hash?: string;
+	json_artifact_count?: number;
+} = {}): GraphPatch {
+	if (preview.patch) return preview.patch;
+	const imported_at = Date.now();
+	const provider = metadata.provider ?? preview.provider ?? preview.kind ?? 'generic_json';
+	const file_name = metadata.file_name ?? preview.file_name ?? preview.thread.title;
+	const thread_id = makeId(`thread_${provider}`);
+	const manifest = makeManifest({
+		file_name,
+		provider,
+		imported_at,
+		raw_hash: metadata.raw_hash ?? stableHash(preview.thread.nodes.map((node) => ({ id: node.id, text: node.text }))),
+		thread_ids: [thread_id],
+		node_count: preview.thread.nodes.length,
+		edge_count: preview.thread.edges.length,
+		json_artifact_count: metadata.json_artifact_count ?? preview.json_artifact_count ?? 0
+	});
+	const nodes = preview.thread.nodes.map((node) => ({ ...node, imported_at: node.imported_at ?? imported_at, thread_id }));
+	const edges = preview.thread.edges;
+	const thread = makeThread({
+		thread_id,
+		source_provider: provider,
+		title: preview.thread.title,
+		imported_at,
+		root_node_id: nodes[0]?.id ?? '',
+		source_manifest_id: manifest.id,
+		node_ids: nodes.map((node) => node.id),
+		edge_ids: edges.map((edge) => edge.id)
+	});
 	return {
-		add_nodes: preview.thread.nodes,
-		add_edges: preview.thread.edges,
-		select_node_ids: preview.thread.nodes.length ? [preview.thread.nodes[preview.thread.nodes.length - 1].id] : [],
-		active_node_id: preview.thread.nodes.at(-1)?.id ?? null
+		add_nodes: nodes,
+		add_edges: edges,
+		add_threads: nodes.length ? [thread] : [],
+		add_import_manifests: [manifest],
+		select_node_ids: nodes.length ? [nodes[nodes.length - 1].id] : [],
+		active_node_id: nodes.at(-1)?.id ?? null
 	};
 }
 
