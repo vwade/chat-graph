@@ -1,5 +1,4 @@
-import type { AgentMode, ChatEdge, ChatNode, ChatRole, EdgeKind, GraphNodeKind, GraphState } from '../types';
-import type { GraphPatch } from '../importers/types';
+import type { AgentMode, ChatEdge, ChatNode, ChatRole, EdgeKind, GraphNodeKind, GraphPatch, GraphState } from '../types';
 import { createSampleGraph } from '../data/sampleGraph';
 import { estimateTokens, makeId } from '../utils/id';
 
@@ -224,12 +223,28 @@ function normalizeGraph(state: GraphState): GraphState {
 
 function applyGraphPatch(state: GraphState, patch: GraphPatch): GraphState {
 	const id_map = new Map<string, string>();
+	const edge_id_map = new Map<string, string>();
+	const thread_id_map = new Map<string, string>();
+	const manifest_id_map = new Map<string, string>();
 	const nodes = { ...state.nodes };
+
+	for (const thread of patch.add_threads ?? []) {
+		thread_id_map.set(thread.thread_id, state.threads[thread.thread_id] ? makeId('import_thread') : thread.thread_id);
+	}
+	for (const manifest of patch.add_import_manifests ?? []) {
+		manifest_id_map.set(manifest.id, state.import_manifests[manifest.id] ? makeId('import_manifest') : manifest.id);
+	}
 
 	for (const node of patch.add_nodes ?? []) {
 		const next_id = nodes[node.id] ? makeId('import_node') : node.id;
 		id_map.set(node.id, next_id);
-		nodes[next_id] = normalizeNode({ ...node, id: next_id });
+		nodes[next_id] = normalizeNode({
+			...node,
+			id: next_id,
+			thread_id: node.thread_id ? thread_id_map.get(node.thread_id) ?? node.thread_id : node.thread_id,
+			branch_id: remapThreadPrefixedId(node.branch_id, thread_id_map),
+			branch_path: node.branch_path?.map((id) => thread_id_map.get(id) ?? id)
+		});
 	}
 
 	for (const update of patch.update_nodes ?? []) {
@@ -244,6 +259,7 @@ function applyGraphPatch(state: GraphState, patch: GraphPatch): GraphState {
 		const to = id_map.get(edge.to) ?? edge.to;
 		if (!nodes[from] || !nodes[to]) continue;
 		const next_id = edges[edge.id] ? makeId('import_edge') : edge.id;
+		edge_id_map.set(edge.id, next_id);
 		edges[next_id] = { ...edge, id: next_id, from, to };
 	}
 
@@ -258,14 +274,40 @@ function applyGraphPatch(state: GraphState, patch: GraphPatch): GraphState {
 		edges,
 		threads: {
 			...state.threads,
-			...Object.fromEntries((patch.add_threads ?? []).map((thread) => [thread.thread_id, thread]))
+			...Object.fromEntries((patch.add_threads ?? []).map((thread) => {
+				const thread_id = thread_id_map.get(thread.thread_id) ?? thread.thread_id;
+				return [thread_id, {
+					...thread,
+					thread_id,
+					root_node_id: id_map.get(thread.root_node_id) ?? thread.root_node_id,
+					node_ids: thread.node_ids.map((id) => id_map.get(id) ?? id).filter((id) => Boolean(nodes[id])),
+					edge_ids: thread.edge_ids.map((id) => edge_id_map.get(id) ?? id).filter((id) => Boolean(edges[id])),
+					source_manifest_id: manifest_id_map.get(thread.source_manifest_id) ?? thread.source_manifest_id
+				}];
+			}))
 		},
 		import_manifests: {
 			...state.import_manifests,
-			...Object.fromEntries((patch.add_import_manifests ?? []).map((manifest) => [manifest.id, manifest]))
+			...Object.fromEntries((patch.add_import_manifests ?? []).map((manifest) => {
+				const id = manifest_id_map.get(manifest.id) ?? manifest.id;
+				return [id, {
+					...manifest,
+					id,
+					thread_ids: manifest.thread_ids.map((thread_id) => thread_id_map.get(thread_id) ?? thread_id)
+				}];
+			}))
 		},
 		selected_node_ids,
 		active_node_id: active_node_id && nodes[active_node_id] ? active_node_id : null,
 		linking_from_id: null
 	};
+}
+
+function remapThreadPrefixedId(id: string | undefined, thread_id_map: Map<string, string>): string | undefined {
+	if (!id) return id;
+	for (const [old_thread_id, new_thread_id] of thread_id_map) {
+		if (id === old_thread_id) return new_thread_id;
+		if (id.startsWith(`${old_thread_id}:`)) return `${new_thread_id}${id.slice(old_thread_id.length)}`;
+	}
+	return id;
 }

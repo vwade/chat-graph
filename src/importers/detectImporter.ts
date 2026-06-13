@@ -1,7 +1,7 @@
 import type { GraphState } from '../types';
 import { canImportChatGptMapping, buildChatGptPreview } from './chatGptImporter';
-import { previewGenericJson } from './genericJsonImporter';
-import { isMessageArray, previewMessageArray, previewToPatch } from './messageArrayImporter';
+import { genericJsonPatch, previewGenericJson } from './genericJsonImporter';
+import { isMessageArray, messageArrayPatch, previewMessageArray, previewToPatch } from './messageArrayImporter';
 import type { GraphPatch, ImportManifest, ImportPreview } from './types';
 
 export type DetectedImporter = ImportManifest & {
@@ -40,7 +40,7 @@ export function detectImporter(value: unknown, filename: string): DetectedImport
 			description: 'Detected an array of role/content chat messages.',
 			can_restore: false,
 			preview,
-			createPatch: () => previewToPatch(preview)
+			createPatch: () => messageArrayPatch(value, filename)
 		};
 	}
 	const preview = previewGenericJson(value, filename);
@@ -50,7 +50,7 @@ export function detectImporter(value: unknown, filename: string): DetectedImport
 		description: 'Detected arbitrary JSON and converted it to artifact nodes.',
 		can_restore: false,
 		preview,
-		createPatch: () => previewToPatch(preview)
+		createPatch: () => genericJsonPatch(value, filename)
 	};
 }
 
@@ -80,6 +80,25 @@ function graphStatePatch(graph: GraphState): GraphPatch {
 		add_import_manifests: Object.values(graph.import_manifests ?? {}),
 		select_node_ids: graph.selected_node_ids ?? [],
 		active_node_id: graph.active_node_id ?? null
+	};
+}
+
+function emptyGraphState(): GraphState {
+	return {
+		schema_version: 1,
+		graph_id: 'import-preview',
+		title: 'Import preview',
+		nodes: {},
+		edges: {},
+		threads: {},
+		import_manifests: {},
+		selected_node_ids: [],
+		active_node_id: null,
+		linking_from_id: null,
+		context_radius: 2,
+		agent_mode: 'mock',
+		http_endpoint: '',
+		last_saved_at: null
 	};
 }
 

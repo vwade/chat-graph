@@ -1,4 +1,5 @@
-import type { ChatEdge, ChatNode, GraphPatch as AppGraphPatch, ImportManifest as AppImportManifest, ImportedThread as AppImportedThread } from '../types';
+import type { ChatEdge, ChatNode, ImportManifest as AppImportManifest, ImportedThread as AppImportedThread } from '../types';
+export type { GraphPatch } from '../types';
 
 export type ImportedThread = {
 	title: string;
@@ -20,7 +21,7 @@ export type ImportPreview = {
 	date_range?: { start: number | null; end: number | null };
 	threads?: AppImportedThread[];
 	manifest?: AppImportManifest;
-	patch?: AppGraphPatch;
+	patch?: import('../types').GraphPatch;
 	warnings?: string[];
 };
 
@@ -30,5 +31,3 @@ export type ImportManifest = {
 	description: string;
 	can_restore: boolean;
 };
-
-export type GraphPatch = AppGraphPatch;
