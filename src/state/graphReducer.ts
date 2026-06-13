@@ -1,9 +1,11 @@
 import type { AgentMode, ChatEdge, ChatNode, ChatRole, EdgeKind, GraphNodeKind, GraphState } from '../types';
+import type { GraphPatch } from '../importers/types';
 import { createSampleGraph } from '../data/sampleGraph';
 import { estimateTokens, makeId } from '../utils/id';
 
 export type GraphAction =
 	| { type: 'hydrate'; state: GraphState }
+	| { type: 'apply_patch'; patch: GraphPatch }
 	| { type: 'reset' }
 	| { type: 'add_node'; node: ChatNode; select?: boolean }
 	| { type: 'update_node'; id: string; patch: Partial<ChatNode> }
@@ -12,6 +14,7 @@ export type GraphAction =
 	| { type: 'set_active_node'; id: string | null }
 	| { type: 'delete_selected' }
 	| { type: 'add_edge'; edge: ChatEdge }
+	| { type: 'apply_patch'; patch: GraphPatch }
 	| { type: 'begin_link'; id: string }
 	| { type: 'finish_link'; to: string; kind?: EdgeKind }
 	| { type: 'cancel_link' }
@@ -23,6 +26,9 @@ export function graphReducer(state: GraphState, action: GraphAction): GraphState
 	switch (action.type) {
 		case 'hydrate': {
 			return normalizeGraph(action.state);
+		}
+		case 'apply_patch': {
+			return applyGraphPatch(state, action.patch);
 		}
 		case 'reset': {
 			return createSampleGraph();
@@ -59,7 +65,19 @@ export function graphReducer(state: GraphState, action: GraphAction): GraphState
 				...state,
 				nodes: {
 					...state.nodes,
-					[action.id]: { ...old_node, x: action.x, y: action.y, updated_at: Date.now() }
+					[action.id]: {
+						...old_node,
+						x: action.x,
+						y: action.y,
+						layout: {
+							x: action.x,
+							y: action.y,
+							z: old_node.layout?.z,
+							pinned: true,
+							group_id: old_node.layout?.group_id ?? ''
+						},
+						updated_at: Date.now()
+					}
 				}
 			};
 		}
@@ -101,6 +119,9 @@ export function graphReducer(state: GraphState, action: GraphAction): GraphState
 				...state,
 				edges: { ...state.edges, [action.edge.id]: action.edge }
 			};
+		}
+		case 'apply_patch': {
+			return applyGraphPatch(state, action.patch);
 		}
 		case 'begin_link': {
 			if (!state.nodes[action.id]) return state;
@@ -148,9 +169,23 @@ function normalizeNode(node: ChatNode): ChatNode {
 		tags: Array.isArray(node.tags) ? node.tags : [],
 		status: node.status ?? 'idle',
 		kind: node.kind ?? kindFromRole(node.role),
+		content_type: node.content_type ?? 'text/plain',
 		created_at: node.created_at ?? Date.now(),
 		updated_at: node.updated_at ?? Date.now(),
-		token_estimate: estimateTokens(node.text ?? '')
+		content_type: node.content_type ?? 'text/plain',
+		token_estimate: estimateTokens(node.text ?? ''),
+		layout: normalizeLayout(node)
+	};
+}
+
+function normalizeLayout(node: ChatNode): ChatNode['layout'] {
+	if (!node.layout && node.x === undefined && node.y === undefined) return undefined;
+	return {
+		x: node.layout?.x ?? node.x ?? 0,
+		y: node.layout?.y ?? node.y ?? 0,
+		z: node.layout?.z,
+		pinned: node.layout?.pinned ?? false,
+		group_id: node.layout?.group_id ?? ''
 	};
 }
 
@@ -185,5 +220,39 @@ function normalizeGraph(state: GraphState): GraphState {
 		agent_mode: state.agent_mode ?? 'mock',
 		http_endpoint: state.http_endpoint ?? '/api/chat',
 		last_saved_at: state.last_saved_at ?? null
+	};
+}
+
+function applyGraphPatch(state: GraphState, patch: GraphPatch): GraphState {
+	const id_map = new Map<string, string>();
+	const nodes = { ...state.nodes };
+
+	for (const [id, node] of Object.entries(patch.nodes ?? {})) {
+		const next_id = nodes[id] ? makeId('import_node') : id;
+		id_map.set(id, next_id);
+		nodes[next_id] = normalizeNode({ ...node, id: next_id });
+	}
+
+	const edges = { ...state.edges };
+	for (const [id, edge] of Object.entries(patch.edges ?? {})) {
+		const from = id_map.get(edge.from) ?? edge.from;
+		const to = id_map.get(edge.to) ?? edge.to;
+		if (!nodes[from] || !nodes[to]) continue;
+		const next_id = edges[id] ? makeId('import_edge') : id;
+		edges[next_id] = { ...edge, id: next_id, from, to };
+	}
+
+	const selected_node_ids = (patch.selected_node_ids ?? [])
+		.map((id) => id_map.get(id) ?? id)
+		.filter((id) => Boolean(nodes[id]));
+	const active_node_id = patch.active_node_id ? id_map.get(patch.active_node_id) ?? patch.active_node_id : selected_node_ids[0] ?? state.active_node_id;
+
+	return {
+		...state,
+		nodes,
+		edges,
+		selected_node_ids,
+		active_node_id: active_node_id && nodes[active_node_id] ? active_node_id : null,
+		linking_from_id: null
 	};
 }
