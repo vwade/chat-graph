@@ -101,22 +101,3 @@ function emptyGraphState(): GraphState {
 		last_saved_at: null
 	};
 }
-
-function emptyGraphState(): GraphState {
-	return {
-		schema_version: 1,
-		graph_id: 'import-preview',
-		title: 'Import preview',
-		nodes: {},
-		edges: {},
-		threads: {},
-		import_manifests: {},
-		selected_node_ids: [],
-		active_node_id: null,
-		linking_from_id: null,
-		context_radius: 2,
-		agent_mode: 'mock',
-		http_endpoint: '',
-		last_saved_at: null
-	};
-}

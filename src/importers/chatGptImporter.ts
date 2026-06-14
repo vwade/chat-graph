@@ -22,11 +22,6 @@ type ParsedMessage = {
 	content_type: ChatNode['content_type'];
 };
 
-export function canImportChatGptMapping(data: unknown): boolean {
-	const record = isRecord(data) ? data : {};
-	return isRecord(record.mapping);
-}
-
 export function buildChatGptPreview(data: unknown, file_name: string, current: GraphState): ImportPreview {
 	const imported_at = Date.now();
 	const raw_hash = stableHash(data);
@@ -242,8 +237,4 @@ function normalizeRole(value: unknown): ChatRole {
 function spawnX(current: GraphState): number {
 	const xs = Object.values(current.nodes).map((node) => node.x);
 	return xs.length ? Math.max(...xs) + 480 : -320;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 }

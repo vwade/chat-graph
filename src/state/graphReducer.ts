@@ -13,7 +13,6 @@ export type GraphAction =
 	| { type: 'set_active_node'; id: string | null }
 	| { type: 'delete_selected' }
 	| { type: 'add_edge'; edge: ChatEdge }
-	| { type: 'apply_patch'; patch: GraphPatch }
 	| { type: 'begin_link'; id: string }
 	| { type: 'finish_link'; to: string; kind?: EdgeKind }
 	| { type: 'cancel_link' }
@@ -118,9 +117,6 @@ export function graphReducer(state: GraphState, action: GraphAction): GraphState
 				...state,
 				edges: { ...state.edges, [action.edge.id]: action.edge }
 			};
-		}
-		case 'apply_patch': {
-			return applyGraphPatch(state, action.patch);
 		}
 		case 'begin_link': {
 			if (!state.nodes[action.id]) return state;
