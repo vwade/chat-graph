@@ -1,4 +1,4 @@
-import type { AgentMode, ChatEdge, ChatNode, ChatRole, EdgeKind, GraphNodeKind, GraphPatch, GraphState } from '../types';
+import type { AgentMode, ChatEdge, ChatNode, ChatRole, EdgeKind, GraphNodeKind, GraphPatch, GraphState, GraphViewState, LayoutMode, ViewportMode } from '../types';
 import { createSampleGraph } from '../data/sampleGraph';
 import { estimateTokens, makeId } from '../utils/id';
 
@@ -9,6 +9,13 @@ export type GraphAction =
 	| { type: 'add_node'; node: ChatNode; select?: boolean }
 	| { type: 'update_node'; id: string; patch: Partial<ChatNode> }
 	| { type: 'move_node'; id: string; x: number; y: number }
+	| { type: 'move_node_3d'; id: string; x: number; y: number; z: number }
+	| { type: 'set_node_pinned'; id: string; pinned: boolean }
+	| { type: 'set_viewport_mode'; mode: ViewportMode }
+	| { type: 'set_layout_mode'; mode: LayoutMode }
+	| { type: 'set_time_cursor'; time_cursor: number | null }
+	| { type: 'set_focus_node'; id: string | null; depth?: number }
+	| { type: 'set_graph_view_options'; patch: Partial<GraphViewState> }
 	| { type: 'select_node'; id: string | null; multi?: boolean }
 	| { type: 'set_active_node'; id: string | null }
 	| { type: 'delete_selected' }
@@ -78,6 +85,45 @@ export function graphReducer(state: GraphState, action: GraphAction): GraphState
 					}
 				}
 			};
+		}
+		case 'move_node_3d': {
+			const old_node = state.nodes[action.id];
+			if (!old_node) return state;
+			return {
+				...state,
+				nodes: {
+					...state.nodes,
+					[action.id]: normalizeNode({
+						...old_node,
+						x: action.x,
+						y: action.y,
+						z: action.z,
+						pinned: true,
+						layout: { ...old_node.layout, x: action.x, y: action.y, z: action.z, pinned: true },
+						updated_at: Date.now()
+					})
+				}
+			};
+		}
+		case 'set_node_pinned': {
+			const old_node = state.nodes[action.id];
+			if (!old_node) return state;
+			return { ...state, nodes: { ...state.nodes, [action.id]: normalizeNode({ ...old_node, pinned: action.pinned, layout: { ...old_node.layout, pinned: action.pinned } }) } };
+		}
+		case 'set_viewport_mode': {
+			return { ...state, view: normalizeView({ ...state.view, viewport_mode: action.mode }) };
+		}
+		case 'set_layout_mode': {
+			return { ...state, view: normalizeView({ ...state.view, layout_mode: action.mode }) };
+		}
+		case 'set_time_cursor': {
+			return { ...state, view: normalizeView({ ...state.view, time_cursor: action.time_cursor }) };
+		}
+		case 'set_focus_node': {
+			return { ...state, view: normalizeView({ ...state.view, focused_node_id: action.id, focus_depth: action.depth ?? state.view.focus_depth }) };
+		}
+		case 'set_graph_view_options': {
+			return { ...state, view: normalizeView({ ...state.view, ...action.patch }) };
 		}
 		case 'select_node': {
 			if (!action.id) {
@@ -167,6 +213,8 @@ function normalizeNode(node: ChatNode): ChatNode {
 		content_type: node.content_type ?? 'text/plain',
 		created_at: node.created_at ?? Date.now(),
 		updated_at: node.updated_at ?? Date.now(),
+		z: Number.isFinite(node.z) ? node.z : node.layout?.z ?? 0,
+		pinned: node.pinned ?? node.layout?.pinned ?? false,
 		token_estimate: estimateTokens(node.text ?? ''),
 		layout: normalizeLayout(node)
 	};
@@ -177,8 +225,8 @@ function normalizeLayout(node: ChatNode): ChatNode['layout'] {
 	return {
 		x: node.layout?.x ?? node.x ?? 0,
 		y: node.layout?.y ?? node.y ?? 0,
-		z: node.layout?.z,
-		pinned: node.layout?.pinned ?? false,
+		z: node.layout?.z ?? node.z ?? 0,
+		pinned: node.layout?.pinned ?? node.pinned ?? false,
 		group_id: node.layout?.group_id ?? ''
 	};
 }
@@ -204,7 +252,7 @@ function normalizeGraph(state: GraphState): GraphState {
 	return {
 		...createSampleGraph(),
 		...state,
-		schema_version: 1,
+		schema_version: 2,
 		nodes: Object.fromEntries(Object.entries(state.nodes ?? {}).map(([id, node]) => [id, normalizeNode(node)])),
 		edges: state.edges ?? {},
 		selected_node_ids: (state.selected_node_ids ?? []).filter((id) => Boolean(state.nodes?.[id])),
@@ -213,7 +261,22 @@ function normalizeGraph(state: GraphState): GraphState {
 		context_radius: Math.max(0, Math.min(12, Math.round(state.context_radius ?? 3))),
 		agent_mode: state.agent_mode ?? 'mock',
 		http_endpoint: state.http_endpoint ?? '/api/chat',
-		last_saved_at: state.last_saved_at ?? null
+		last_saved_at: state.last_saved_at ?? null,
+		view: normalizeView(state.view)
+	};
+}
+
+function normalizeView(view?: Partial<GraphViewState>): GraphViewState {
+	return {
+		viewport_mode: view?.viewport_mode ?? '3d',
+		layout_mode: view?.layout_mode ?? 'force_3d',
+		time_cursor: view?.time_cursor ?? null,
+		time_window_ms: view?.time_window_ms ?? null,
+		focused_node_id: view?.focused_node_id ?? null,
+		focus_depth: Math.max(1, Math.min(6, Math.round(view?.focus_depth ?? 2))),
+		show_labels: view?.show_labels ?? true,
+		show_edges: view?.show_edges ?? true,
+		show_semantic_halos: view?.show_semantic_halos ?? true
 	};
 }
 

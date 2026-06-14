@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import * as THREE from 'three';
-import { useGraph } from '../state/GraphProvider';
-import type { ChatEdge, ChatNode, EdgeKind, GraphState } from '../types';
+import { useGraph } from '../../state/GraphProvider';
+import type { ChatEdge, ChatNode, EdgeKind, GraphState } from '../../types';
 
 const NODE_W = 260;
 const NODE_H = 126;
@@ -13,7 +13,7 @@ type DragState =
 	| { type: 'pan'; last_x: number; last_y: number }
 	| null;
 
-export function GraphCanvas() {
+export function GraphCanvas2D() {
 	const { state, dispatch } = useGraph();
 	const mount_ref = useRef<HTMLDivElement | null>(null);
 	const state_ref = useRef(state);

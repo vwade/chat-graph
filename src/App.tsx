@@ -1,7 +1,7 @@
 import { ChatPanel } from './components/ChatPanel';
 import { Composer } from './components/Composer';
 import { ContextCandidates } from './components/ContextCandidates';
-import { GraphCanvas } from './components/GraphCanvas';
+import { GraphViewport } from './components/graph/GraphViewport';
 import { Inspector } from './components/Inspector';
 import { Toolbar } from './components/Toolbar';
 import { GraphProvider } from './state/GraphProvider';
@@ -13,7 +13,7 @@ export default function App() {
 				<Toolbar />
 				<main className="workspace">
 					<section className="graph-pane">
-						<GraphCanvas />
+						<GraphViewport />
 					</section>
 					<aside className="side-pane">
 						<ChatPanel />

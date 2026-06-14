@@ -1,4 +1,3 @@
-import type { LayoutNodeState } from './layout/layoutTypes';
 
 export type ChatRole = 'system' | 'user' | 'assistant' | 'tool' | 'context';
 
@@ -51,6 +50,16 @@ export type Vec2 = {
 	y: number;
 };
 
+export type Vec3 = {
+	x: number;
+	y: number;
+	z: number;
+};
+
+export type ViewportMode = '2d' | '3d';
+
+export type LayoutMode = 'manual_2d' | 'force_3d' | 'temporal_3d' | 'cluster_3d';
+
 export type ContentType = 'text/plain' | 'text/markdown' | 'application/json';
 
 export type TrustLevel =
@@ -97,6 +106,7 @@ export type ChatNode = {
 	content_json?: unknown;
 	x: number;
 	y: number;
+	z?: number;
 	created_at: number;
 	updated_at: number;
 	imported_at?: number;
@@ -113,6 +123,8 @@ export type ChatNode = {
 	layout?: NodeLayout;
 	status: ChatNodeStatus;
 	token_estimate: number;
+	pinned?: boolean;
+	cluster_id?: string | null;
 };
 
 export type ImportedThread = {
@@ -159,8 +171,20 @@ export type GraphPatch = {
 	active_node_id?: string | null;
 };
 
+export type GraphViewState = {
+	viewport_mode: ViewportMode;
+	layout_mode: LayoutMode;
+	time_cursor: number | null;
+	time_window_ms: number | null;
+	focused_node_id: string | null;
+	focus_depth: number;
+	show_labels: boolean;
+	show_edges: boolean;
+	show_semantic_halos: boolean;
+};
+
 export type GraphState = {
-	schema_version: 1;
+	schema_version: 1 | 2;
 	graph_id: string;
 	title: string;
 	nodes: Record<string, ChatNode>;
@@ -174,6 +198,7 @@ export type GraphState = {
 	agent_mode: AgentMode;
 	http_endpoint: string;
 	last_saved_at: number | null;
+	view: GraphViewState;
 };
 
 export type AgentMessage = {

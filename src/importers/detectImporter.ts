@@ -98,6 +98,17 @@ function emptyGraphState(): GraphState {
 		context_radius: 2,
 		agent_mode: 'mock',
 		http_endpoint: '',
-		last_saved_at: null
+		last_saved_at: null,
+		view: {
+			viewport_mode: '3d',
+			layout_mode: 'force_3d',
+			time_cursor: null,
+			time_window_ms: null,
+			focused_node_id: null,
+			focus_depth: 2,
+			show_labels: true,
+			show_edges: true,
+			show_semantic_halos: true
+		}
 	};
 }
