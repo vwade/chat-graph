@@ -2,9 +2,12 @@ import { useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { useGraph } from '../../state/GraphProvider';
-import type { ChatEdge, ChatNode, GraphState } from '../../types';
+import type { ChatEdge, ChatNode, GraphState, LayoutMode } from '../../types';
 import { createCameraRigState, smoothCameraTowardRig } from './graphCamera';
 import { pickNodeId } from './graphPicking';
+import { calculateForceLayout3D } from '../../layout/forceLayout';
+import type { LayoutNodeState } from '../../layout/layoutTypes';
+import { projectTemporal3D } from '../../layout/temporal3d';
 import { disposeObject, edgeColor, nodePosition, nodeRadius, roleColor, roleEmissive } from './graphVisuals';
 
 const CAMERA_START = new THREE.Vector3(0, 420, 1400);
@@ -21,6 +24,7 @@ export function GraphCanvas3D() {
 	const raycaster_ref = useRef(new THREE.Raycaster());
 	const rig_ref = useRef(createCameraRigState());
 	const controls_ref = useRef<OrbitControls | null>(null);
+	const position_map_ref = useRef<Record<string, LayoutNodeState>>({});
 
 	state_ref.current = state;
 	dispatch_ref.current = dispatch;
@@ -101,7 +105,7 @@ export function GraphCanvas3D() {
 		renderer.setAnimationLoop(() => {
 			const focused = state_ref.current.active_node_id ? state_ref.current.nodes[state_ref.current.active_node_id] : null;
 			if (focused) {
-				const pos = nodePosition(focused);
+				const pos = vectorFromLayout(position_map_ref.current[focused.id], focused);
 				rig_ref.current.mode = 'focus';
 				rig_ref.current.focus_node_id = focused.id;
 				rig_ref.current.target.copy(pos);
@@ -141,22 +145,27 @@ export function GraphCanvas3D() {
 		hit_targets_ref.current = [];
 		clearGroup(graph_group);
 		clearGroup(label_group);
+		const nodes = Object.values(graph_state.nodes);
+		const edges = Object.values(graph_state.edges);
+		const position_map = buildPositionMap(nodes, edges, graph_state.view.layout_mode);
+		position_map_ref.current = position_map;
 		if (graph_state.view.show_edges) {
-			for (const edge of Object.values(graph_state.edges)) {
+			for (const edge of edges) {
 				const from = graph_state.nodes[edge.from];
 				const to = graph_state.nodes[edge.to];
-				if (from && to) graph_group.add(createEdgeObject(edge, from, to));
+				if (from && to) graph_group.add(createEdgeObject(edge, vectorFromLayout(position_map[from.id], from), vectorFromLayout(position_map[to.id], to)));
 			}
 		}
-		for (const node of Object.values(graph_state.nodes)) {
+		for (const node of nodes) {
 			const selected = graph_state.selected_node_ids.includes(node.id);
-			const object = createNodeObject(node, selected);
+			const position = vectorFromLayout(position_map[node.id], node);
+			const object = createNodeObject(node, selected, position);
 			graph_group.add(object);
 			const hit = object.children.find((child) => child.userData.hitTarget === true);
 			if (hit) hit_targets_ref.current.push(hit);
 			if (graph_state.view.show_labels) {
 				const label = createLabelSprite(node, selected);
-				label.position.copy(nodePosition(node)).add(new THREE.Vector3(0, nodeRadius(node) + 34, 0));
+				label.position.copy(position).add(new THREE.Vector3(0, nodeRadius(node) + 34, 0));
 				label.quaternion.copy(camera.quaternion);
 				label_group.add(label);
 			}
@@ -164,6 +173,45 @@ export function GraphCanvas3D() {
 	}
 
 	return <div className="graph-stage" ref={mount_ref}><div className="graph-hint"><span>Orbit drag</span><span>Click to focus</span><span>Wheel scrubs time when nothing is selected</span><span>Wheel zooms focused space when selected</span></div></div>;
+}
+
+function buildPositionMap(nodes: ChatNode[], edges: ChatEdge[], mode: LayoutMode): Record<string, LayoutNodeState> {
+	switch (mode) {
+		case 'temporal_3d':
+			return projectTemporal3D(nodes);
+		case 'cluster_3d':
+			return projectCluster3D(nodes);
+		case 'force_3d':
+		case 'manual_2d':
+		default:
+			return calculateForceLayout3D(nodes, edges, { iterations: 80 });
+	}
+}
+
+function projectCluster3D(nodes: ChatNode[]): Record<string, LayoutNodeState> {
+	const temporal = projectTemporal3D(nodes, { z_spacing: 720, xy_spacing: 72 });
+	const groups = new Map<string, number>();
+	const result: Record<string, LayoutNodeState> = {};
+	for (const node of nodes) {
+		const state = temporal[node.id];
+		const group_id = node.layout?.group_id ?? node.cluster_id ?? node.thread_id ?? node.role;
+		if (!groups.has(group_id)) groups.set(group_id, groups.size);
+		const group_index = groups.get(group_id) ?? 0;
+		const angle = group_index * 2.399963229728653;
+		const radius = 420 + Math.floor(group_index / 6) * 260;
+		result[node.id] = {
+			...state,
+			x: state.x + Math.cos(angle) * radius,
+			y: state.y + Math.sin(angle) * radius,
+			group_id
+		};
+	}
+	return result;
+}
+
+function vectorFromLayout(state: LayoutNodeState | undefined, fallback: ChatNode): THREE.Vector3 {
+	if (state) return new THREE.Vector3(state.x, state.y, state.z ?? 0);
+	return nodePosition(fallback);
 }
 
 function clearGroup(group: THREE.Group): void {
@@ -174,10 +222,10 @@ function clearGroup(group: THREE.Group): void {
 	}
 }
 
-function createNodeObject(node: ChatNode, selected: boolean): THREE.Group {
+function createNodeObject(node: ChatNode, selected: boolean, position: THREE.Vector3): THREE.Group {
 	const group = new THREE.Group();
 	const radius = nodeRadius(node);
-	group.position.copy(nodePosition(node));
+	group.position.copy(position);
 	const body = new THREE.Mesh(
 		new THREE.SphereGeometry(1, 32, 18),
 		new THREE.MeshStandardMaterial({ color: roleColor(node.role), emissive: roleEmissive(node.role), emissiveIntensity: selected ? 0.65 : 0.28, roughness: 0.42, metalness: 0.08, transparent: true, opacity: 0.92 })
@@ -197,9 +245,7 @@ function createNodeObject(node: ChatNode, selected: boolean): THREE.Group {
 	return group;
 }
 
-function createEdgeObject(edge: ChatEdge, from: ChatNode, to: ChatNode): THREE.Mesh {
-	const a = nodePosition(from);
-	const b = nodePosition(to);
+function createEdgeObject(edge: ChatEdge, a: THREE.Vector3, b: THREE.Vector3): THREE.Mesh {
 	const mid = a.clone().add(b).multiplyScalar(0.5);
 	mid.y += Math.min(220, a.distanceTo(b) * 0.12);
 	const curve = new THREE.CatmullRomCurve3([a, mid, b]);
