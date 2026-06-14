@@ -18,6 +18,45 @@ type SimulationNode = LayoutNodeState & {
 	vz: number;
 };
 
+
+export type ForceLayout3DTickOptions = ForceLayoutOptions & {
+	previous?: Record<string, LayoutNodeState>;
+};
+
+export function tickForceLayout3D(
+	nodes: ChatNode[],
+	edges: ChatEdge[],
+	options: ForceLayout3DTickOptions = {}
+): Record<string, LayoutNodeState> {
+	const warmed_nodes = options.previous
+		? nodes.map((node) => {
+			const previous = options.previous?.[node.id];
+			if (!previous) return node;
+			return {
+				...node,
+				layout: {
+					...node.layout,
+					x: node.layout?.x ?? previous.x,
+					y: node.layout?.y ?? previous.y,
+					z: node.layout?.z ?? previous.z,
+					pinned: node.layout?.pinned ?? node.pinned ?? previous.pinned,
+					group_id: node.layout?.group_id ?? previous.group_id
+				}
+			};
+		})
+		: nodes;
+
+	return calculateForceLayout(warmed_nodes, edges, { ...options, dimensions: 3, iterations: options.iterations ?? 1 });
+}
+
+export function calculateForceLayout3D(
+	nodes: ChatNode[],
+	edges: ChatEdge[],
+	options: ForceLayoutOptions = {}
+): Record<string, LayoutNodeState> {
+	return calculateForceLayout(nodes, edges, { ...options, dimensions: 3 });
+}
+
 const DEFAULT_OPTIONS: Required<ForceLayoutOptions> = {
 	dimensions: 2,
 	iterations: 120,
@@ -43,7 +82,7 @@ export function calculateForceLayout(
 			node_id: node.id,
 			x: layout?.x ?? node.x,
 			y: layout?.y ?? node.y,
-			z: config.dimensions === 3 ? layout?.z ?? 0 : undefined,
+			z: config.dimensions === 3 ? layout?.z ?? node.z ?? seededZ(node.id) : undefined,
 			pinned: layout?.pinned ?? false,
 			group_id: layout?.group_id ?? '',
 			vx: 0,
@@ -156,4 +195,13 @@ function integrate(nodes: Map<string, SimulationNode>, damping: number, dimensio
 		node.y += node.vy;
 		if (dimensions === 3) node.z = (node.z ?? 0) + node.vz;
 	}
+}
+
+function seededZ(id: string): number {
+	let hash = 2166136261;
+	for (let i = 0; i < id.length; i += 1) {
+		hash ^= id.charCodeAt(i);
+		hash = Math.imul(hash, 16777619);
+	}
+	return ((hash >>> 0) % 1200) - 600;
 }
