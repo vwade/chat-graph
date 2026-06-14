@@ -53,7 +53,7 @@ function byCreatedAt<T extends { created_at: number }>(a: T, b: T): number {
 
 function roleToAgentRole(role: ChatNode['role']): AgentMessage['role'] {
 	if (role === 'assistant') return 'assistant';
-	if (role === 'system' || role === 'context') return 'system';
+	if (role === 'system' || role === 'context' || role === 'tool') return 'system';
 	return 'user';
 }
 
@@ -274,11 +274,12 @@ export function getSelectedNode(state: GraphState): ChatNode | null {
 	return id ? state.nodes[id] ?? null : null;
 }
 
-export function graphStats(state: GraphState): { node_count: number; edge_count: number; token_estimate: number } {
+export function graphStats(state: GraphState): { node_count: number; edge_count: number; thread_count: number; token_estimate: number } {
 	const nodes = Object.values(state.nodes);
 	return {
 		node_count: nodes.length,
 		edge_count: Object.keys(state.edges).length,
+		thread_count: Object.keys(state.threads ?? {}).length,
 		token_estimate: nodes.reduce((sum, node) => sum + node.token_estimate, 0)
 	};
 }
